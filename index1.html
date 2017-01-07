@@ -1,0 +1,43 @@
+<title>Cozmo Controller</title>
+
+Hello World
+
+<script>
+
+var socket = null;
+var status = {
+  connected: false,
+  shutdown: false
+};
+
+var becomeApp = function(){
+  socket.send('ControlApp');
+};
+
+var startSocket = function(){
+  socket = new WebSocket('ws://127.0.0.1:9090/ws'); // connect to python sdk web server
+
+  socket.onopen = function(event){
+    console.log('Connected to Cozmo Python SDK');
+    status.connected = true;
+  };
+
+  socket.onclose = function(event){
+    if(!status.shutdown && !status.connected)
+      setTimeout(startSocket, 2000); // try to reconnect to SDK
+
+    status.connected = false;
+    status.socket = null;
+  };
+
+  socket.onmessage = function(event) {
+    console.log("got message: " + event.data);
+  };
+};
+
+startSocket();
+
+</script>
+
+<button type="button" onclick="socket.send('test');">Click Me!</button>
+<button type="button" onclick="becomeApp();">Become App!</button>
