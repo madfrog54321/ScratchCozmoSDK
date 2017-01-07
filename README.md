@@ -16,7 +16,7 @@ Expand your Cozmo's abilities with this Scratch extension. With Scratch's drag-a
 
 2. Install Tornado Web Server `$ pip3 install tornado`
 
-4. Download and run the <a href="Download_Cozmo_Controller();">Cozmo Controller</a> app. `Cozmo_Controller.py`
+4. Download and run the <a href="javascript:Download_Cozmo_Controller();">Cozmo Controller</a> app. `Cozmo_Controller.py`
 
 5. [Open ScratchX](http://scratchx.org/?url=https://madfrog54321.github.io/ScratchCozmoSDK/Cozmo_Extension.js)
 
