@@ -41,7 +41,7 @@ def handleCommand(command):
     data1 = message[1]
     data2 = message[2]
     data3 = message[3]
-    wait = message[4]
+    wait = message[4] == 'wait'
     action = 0
     try:
         # have cozmo say the text in data1
@@ -91,13 +91,19 @@ def handleCommand(command):
         # drive,[distance in mm],[speed in mm/s],-,[wait, continue]
         # drive,100,50,-,wait
         elif name == 'drive' and robot:
-            action = robot.drive_straight(distance_mm(float(data1)), speed_mmps(float(data2)), False)
+            action = robot.drive_straight(distance_mm(float(data1)), speed_mmps(float(data2)))
 
         # turn by the angle given
         # turn,[angle to turn],-,-,[wait, continue]
         # turn,90,-,-,wait
         elif name == 'turn' and robot:
             action = robot.turn_in_place(degrees(float(data1)))
+
+        # drive each wheel at set speed
+        # speed,[speed for left],[speed for right],-,[wait, continue]
+        # speed,-50,50,-,wait
+        elif name == 'speed' and robot:
+            robot.drive_wheels(float(data1), float(data2), l_wheel_acc=1000, r_wheel_acc=1000)
 
         # stop the current action and all motors
         # stop,-,-,-,continue
@@ -142,7 +148,7 @@ def handleCommand(command):
             print('Unkown command: ' + command)
 
         # --- setup callback for action if command asked for wait ---
-        if not action == 0 and wait == 'wait':
+        if not action == 0 and wait:
             if not currentAction == 0:
                 currentAction.abort()
             currentActionType = name
@@ -179,6 +185,7 @@ def run(sdk_conn):
     print("Connected to {!s}".format(robot))
     commander.setRobotStatus(True)
     while not shutdown and sdk_conn.is_connected:
+        time.sleep(0.5)
         commander.sendToClient('voltage,-,' + str(robot.battery_voltage))
         if robot.is_picked_up:
             commander.sendToClient('pickedUp,-,yes')

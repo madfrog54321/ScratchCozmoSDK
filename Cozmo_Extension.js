@@ -38,7 +38,9 @@
   var voltage = 0;
 
   var states = {
-    speed:50
+    speed:5,
+    left_speed:5,
+    right_speed:5
   };
 
   var status = {
@@ -71,13 +73,10 @@
       return {status: 2, msg: 'Ready'};
   };
 
-  ext.speak = function(data, flow, callback) {
+  ext.speak = function(data, callback) {
     if (status.connected){
-      ext.sendCommand("speak," + data + ",-,-," + (flow === 'Wait' ? 'wait' : 'async'));
-      if(flow === 'Wait')
-        ext.waitForDone(callback);
-      else
-        callback();
+      ext.sendCommand("speak," + data + ",-,-,wait");
+      ext.waitForDone(callback);
     }else
       callback();
   };
@@ -181,12 +180,13 @@
   };
 
   ext.setSpeed = function(speed){
+    speed = Math.max(Math.min(speed, 20), -20);
     states.speed = speed;
   };
 
   ext.driveForward = function(direction, distance, callback){
     if (status.connected){
-      ext.sendCommand("drive," + (direction === 'Backward' ? -distance : distance) + "," + states.speed + ",-,wait");
+      ext.sendCommand("drive," + (direction === 'Backward' ? -distance : distance) * 10.0 + "," + states.speed * 10.0 + ",-,wait");
       ext.waitForDone(callback);
     }else
       callback();
@@ -201,6 +201,8 @@
   };
 
   ext.stopMotors = function(){
+    states.left_speed = 0;
+    states.right_speed = 0;
     ext.sendCommand('stop,-,-,-,continue');
   };
 
@@ -296,19 +298,33 @@
     return voltage < 3.5;
   };
 
+  ext.move = function(motor, direction, speed){
+    speed = (direction === 'Forward' ? speed : -speed);
+    speed = Math.max(Math.min(speed, 20), -20);
+    if(motor === 'Both'){
+      states.left_speed = speed;
+      states.right_speed = speed;
+    }else if(motor === 'Left'){
+      states.left_speed = speed;
+    }else if(motor === 'Right'){
+      states.right_speed = speed;
+    }
+    ext.sendCommand("speed," + states.left_speed * 10.0 + "," + states.right_speed * 10.0 + ",-,continue");
+  };
+
   // Block and block menu descriptions
   var descriptor = {
       blocks: [
           // Block type, block name, function name, param1 default value, param2 default value
-          ['w', 'Say %s and %m.flow', 'speak', 'hello', 'Wait'],
+          ['w', 'Cozmo say %s', 'speak', 'hi im cozmo'],
           ['s'], ['s'],
-          [' ', 'Set drive speed to %n mm/s', 'setSpeed', '50'],
-          ['w', 'Drive %m.direction %n mm', 'driveForward' , 'Forward', '100'],
-          ['w', 'Turn %n degrees %m.sideDirection', 'turn', '90', 'Left'],
-          [' ', 'Set %m.motors motor speed to %n mm/s'],
+          [' ', 'Set track speed to %n cm/s', 'setSpeed', 5],
+          ['w', 'Drive %m.direction %n cm', 'driveForward' , 'Forward', 10],
+          ['w', 'Turn %n degrees %m.sideDirection', 'turn', 90, 'Left'],
+          [' ', 'Move %m.motors track %m.direction at %n cm/s', 'move', 'Both', 'Forward', 5],
           [' ', "Stop Cozmo's motors", 'stopMotors'],
           ['s'], ['s'],
-          ['w', 'Tilt head to %n degrees', 'tilt', '20'],
+          ['w', 'Tilt head to %n degrees', 'tilt', 20],
           ['w', 'Move lift to %m.heights', 'lift', 'Top'],
           ['s'], ['s'],
           //[' ', 'Set back lights to %s', 'setBack', '#f7b83b'],
@@ -341,7 +357,7 @@
         direction: ['Forward', 'Backward'],
         states: ['Enable', 'Disable'],
         flow: ['Wait', 'Continue'],
-        motors: ['Left', 'Right'],
+        motors: ['Both', 'Left', 'Right'],
         heights: ['Top', 'Middle', 'Bottom']
       }
   };
