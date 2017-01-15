@@ -285,6 +285,8 @@
   var descriptor = {
       blocks: [
           // Block type, block name, function name, param1 default value, param2 default value
+          [' ', 'Load sprite from $s', 'loadSprite', 'demo.sprite2']
+          ['s'], ['s'],
           ['w', 'Say %s', 'speak', 'hi im cozmo'],
           [' ', 'Look %m.emotions', 'behavior', 'Amazed'],
           [' ', 'Play %m.animations animation', 'behavior', 'Sneeze'],

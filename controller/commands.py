@@ -117,10 +117,10 @@ def colorLight(cozmo, robot, data):
     return [], True, False
 
 def pickedUp(cozmo, robot, data):
-    return [], True, robot.pickup_object(getCube(cozmo, robot, int(data[0])))
+    return [], True, robot.pickup_object(getCube(cozmo, robot, int(data[0])), in_parallel=True)
 
 def stackCube(cozmo, robot, data):
-    return [], True, robot.place_on_object(getCube(cozmo, robot, int(data[0])), in_parallel=False)
+    return [], True, robot.place_on_object(getCube(cozmo, robot, int(data[0])), in_parallel=True)
 
 def Estop(cozmo, robot, data):
     robot.abort_all_actions()
