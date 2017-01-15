@@ -5,7 +5,29 @@ import tornado.web
 import tornado.websocket
 import tornado.template
 import webbrowser
+import os
+import socket
 
+if os.name != "nt":
+    import fcntl
+    import struct
+    def get_interface_ip(ifname):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack('256s',ifname[:15]))[20:24])
+
+def get_lan_ip():
+    ip = socket.gethostbyname(socket.gethostname())
+    if ip.startswith("127.") and os.name != "nt":
+        interfaces = ["eth0","eth1","eth2","wlan0","wlan1","wifi0","ath0","ath1","ppp0",]
+        for ifname in interfaces:
+            try:
+                ip = get_interface_ip(ifname)
+                break
+            except IOError:
+                pass
+    return ip
+
+serverIP = get_lan_ip()
 clients = []
 apps = []
 robotStatus = False
@@ -37,7 +59,12 @@ class Server:
     class MainHandler(tornado.web.RequestHandler):
         def get(self):
             loader = tornado.template.Loader(".")
-            self.write(loader.load("Web App/index.html").generate())
+            self.write(loader.load("Web App/index.html").generate(ipAddress=serverIP))
+
+    class BlocklyHandler(tornado.web.RequestHandler):
+        def get(self):
+            loader = tornado.template.Loader(".")
+            self.write(loader.load("Web App/blockly/blockly.html").generate())
 
     class WSHandler(tornado.websocket.WebSocketHandler):
         def __init__(self, a, b):
@@ -96,8 +123,14 @@ class Server:
         application = tornado.web.Application([
         (r'/ws', Server.WSHandler),
         (r'/', Server.MainHandler),
+        (r'/blockly', Server.BlocklyHandler),
+        (r'/blockly/code/(.*)', tornado.web.StaticFileHandler, {'path': 'blockly'}),
+        (r'blockly/code/msg/js/(en.js)', tornado.web.StaticFileHandler, {'path': 'blockly/msg/js'}),
         (r'/(theme\.css)', tornado.web.StaticFileHandler, {'path': 'Web App'}),
         (r'/(connector\.js)', tornado.web.StaticFileHandler, {'path': 'Web App'}),
+        (r'/image/(scratch\.png)', tornado.web.StaticFileHandler, {'path': 'Web App/images'}),
+        (r'/image/(blockly\.png)', tornado.web.StaticFileHandler, {'path': 'Web App/images'}),
+        (r'/image/(cozmo\.png)', tornado.web.StaticFileHandler, {'path': 'Web App/images'}),
         ])
         print('[Server] Starting server...')
         application.listen(9090)

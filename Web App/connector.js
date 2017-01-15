@@ -1,6 +1,5 @@
 var socket;
 var robot = false;
-var client = false;
 
 function stopMotors(){
   socket.send('stop,-,-,-,continue');
@@ -12,15 +11,16 @@ function setColor(back, front, text, loading, button){
   $(".cube2").css("background-color",front);
   $(".step").css("color",front);
   $(".info").css("color",front);
-  $(".step").text(text);
+  $(".step").html(text);
   $(".spinner").css("display", (loading ? "" : "none"));
   $(".stopButton").css("display", (button ? "" : "none"));
   $(".editorList").css("display", (button ? "" : "none"));
   $(".deviceInfo").css("display", (button ? "" : "none"));
+  //$(".cozmo").css("display", (button ? "" : "none"));
 }
 
 function goRed(){
-  setColor("#FF4136", "white", "Waiting for phone...", true, false);
+  setColor("#FF4136", "white", "Looking for Cozmo...", true, false);
 };
 
 /*
@@ -30,7 +30,7 @@ function goYellow(){
 */
 
 function goGreen(){
-  setColor("#2ECC40", "white", "Time to program! Choose your editor...", false, true);
+  setColor("#2ECC40", "white", "Let's program Cozmo! Choose your editor...", false, true);
 };
 
 function goBlack(){
@@ -66,18 +66,10 @@ var startSocket = function(){
       }else if(command[1] === 'waiting'){
         robot = false;
       }
-    } else if(name === 'client'){
-      if(command[1] === 'connected'){
-        client = true;
-      }else if(command[1] === 'waiting'){
-        client = false;
-      }
     }
-    if(!robot){
+    if(robot){
       goRed();
-    }else if(!client){
-      goYellow();
-    }else if(robot && client){
+    }else if(!robot){
       goGreen();
     }else {
       goBlack();
@@ -86,4 +78,4 @@ var startSocket = function(){
 };
 
 goBlack();
-//startSocket();
+startSocket();
