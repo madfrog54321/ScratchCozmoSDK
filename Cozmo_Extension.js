@@ -2,6 +2,8 @@
 
   //=============================================================
   //                          Variables
+
+  var MM_to_CM = 10;
   var connection = {
     supported: false,
     socket: null,
@@ -14,6 +16,8 @@
     }
   };
   var status = {
+    wasTappedTimeout: null,
+    wastapped: [false, false, false],
     tapped: [false, false, false],
     canSee: {
       cube: [false, false, false],
@@ -35,33 +39,248 @@
     cliff: { current:false, last: false },
     voltage: 0,
     speed: 50,
+    waitForFinish: true,
+    driveTime: 0,
     shutdown: false
   };
 
   //=============================================================
   //                           Blocks
 
-  ext.speak = function(data, callback) {
-    ext.sendCommand(callback, "say", data);
+  var block_speak = function(text, callback) {
+    sendCommand(callback, "speak", text);
   };
 
-  ext.setLight = function(light, color){
-    console.log(light + "," + color);
-    var hexColor = ext.getColor(color);
-    var object = "";
-    if(light == "All Cubes"){
-      object = "allcubes";
-    }else if (light == "Backpack"){
-      object = "backpack";
-    }else{
-      console.log("bob")
-      object = "cube" + ext.getCube(light);
-      console.log("bob2")
+  var block_playEmotion = function(emotion, callback){
+    sendCommand(callback, "playEmotion", emotion);
+  };
+
+  var block_playAnimation = function(animation, callback){
+    sendCommand(callback, "playAnimation", animation);
+  };
+
+  var block_setSpeed = function(speed){
+    status.speed = float(speed) * MM_to_CM;
+  };
+
+  var block_moveDistance = function(distance, direction, callback){
+    sendCommand(callback, "moveDistance", distance * (direction === "Forward" ? 1 : -1) * MM_to_CM, status.speed);
+  };
+
+  var block_turnAngle = function(direction, angle, callback){
+    sendCommand(callback, "turnAngle", angle * (direction === "Left" ? -1 : 1));
+  };
+
+  var block_drive = function(direction){
+    var left = 1
+    var right = 1
+    if(direction == "Backward"){
+      left = -1;
+      right = -1;
+    } else if(direction == "Left"){
+      left = 0.5;
+      right = 1;
+    } else if(direction == "Right"){
+      left = 1;
+      right = 0.5;
+    } else if(direction == "Sharp Left"){
+      left = -1;
+      right = 1;
+    } else if(direction == "Sharp Right"){
+      left = 1;
+      right = -1;
     }
-    ext.sendCommand(null, "light", object, hexColor);
+    sendCommand(null, "drive", left * status.speed, right * status.speed, 1000.0)
+    stopDrivingAfterTime();
   };
 
-  ext.getColor = function(color){
+  var block_stopDriving = function(){
+    sendCommand(null, "stopDriving");
+  };
+
+  var block_tiltHead = function(angle, callback){
+    sendCommand(callback, "tiltHead", angle);
+  };
+
+  var block_liftArm = function(height, callback){
+    var rawHeight = 0;
+    if(height === "Middle"){
+      rawHeight = 0.5;
+    }else if(height === "Top"){
+      rawHeight = 1;
+    }
+    sendCommand(callback, "liftArm", rawHeight, 100, 0.5);
+  };
+
+  var block_colorLight = function(light, color){
+    sendCommand(null, "colorLight", light, getHexFromColor(color));
+  };
+
+  var block_whenTapped = function(cube){
+    var num = getCubeNumber(cube);
+    var tapped = false;
+    for(var i = 0; i < status.tapped.length; i++){
+      if(status.tapped[i] && (num === i + 1 || num === 0)){
+        resetTapped(i);
+      }
+    }
+    return tapped;
+  };
+
+  var block_whenPlace = function(place){
+    if(place === "Picked Up"){
+      if(status.state.inHand.current === true && status.state.inHand.last === false){
+        resetState(status.state.inHand);
+        return true;
+      } else if(status.state.inHand.current === true && status.state.inHand.last === false){
+        status.state.inHand.last = false;
+      }
+    }else if(place === "Placed On Tracks"){
+      if(status.state.onTracks.current === true && status.state.onTracks.last === false){
+        resetState(status.state.onTracks);
+        return true;
+      } else if(status.state.onTracks.current === true && status.state.onTracks.last === false){
+        status.state.onTracks.last = false;
+      }
+    }else if(place === "Rolled On Side"){
+      if(status.state.onSide.current === true && status.state.onSide.last === false){
+        resetState(status.state.onSide);
+        return true;
+      } else if(status.state.onSide.current === true && status.state.onSide.last === false){
+        status.state.onSide.last = false;
+      }
+    }
+    return false;
+  };
+
+  var block_whenCliff = function(){
+    if(status.cliff.current === true && status.cliff.last === false){
+      resetState(status.cliff);
+      return true;
+    } else if(status.cliff.current === true && status.cliff.last === false){
+      status.cliff.last = false;
+    }
+    return false;
+  };
+
+  var block_pickedUp = function(cube, callback){
+    sendCommand(callback, "pickedUp", getCubeNumber(cube));
+  };
+
+  var block_stackCube = function(cube, callback){
+    sendCommand(callback, "stackCube", getCubeNumber(cube));
+  };
+
+  var block_Estop = function(){
+    sendCommand(null, "Estop");
+  };
+
+  var block_freewill = function(state){
+    sendCommand(null, "freewill", state);
+  };
+
+  var block_canSee = function(object){
+    if(object === "face"){
+      return status.canSee.face;
+    }else if(object === "pet"){
+      return status.canSee.pet;
+    }else if(object === "charger"){
+      return status.canSee.charger;
+    }else if(object[:6] === "cube #"){
+      return status.canSee.cube[int(object[7]) - 1];
+    }
+    return false;
+  };
+
+  var block_wasTapped = function(cube){
+    return status.wasTapped[getCubeNumber(cube)];
+  };
+
+  var block_isDirection = function(object, direction){
+    if(object === "Any Cube"){
+      return isDirection(status.direction.cube[0], direction) ||
+             isDirection(status.direction.cube[1], direction) ||
+             isDirection(status.direction.cube[2], direction);
+    }else if(object[:6] === "Cube #1"){
+      return isDirection(status.direction.cube[int(object[7]) - 1], direction);
+    }else if(object === "Face"){
+      return isDirection(status.direction.face, direction);
+    }else if(object === "Pet"){
+      return isDirection(status.direction.pet, direction);
+    }else if(object === "Charger"){
+      return isDirection(status.direction.charger, direction);
+    }
+  };
+
+  var block_voltage = function(){
+    return status.voltage < 3.5;
+  };
+
+  var block_setTime = function(time){
+    if(time === "Short")
+      status.driveTime = 1;
+    else if(time === "Long")
+      status.driveTime = 2;
+    else if(time === "Forever")
+      status.driveTime = 0;
+  };
+
+  var block_stopWaiting = function(state){
+    status.waitForFinish = (state === "Start");
+  };
+
+  //=============================================================
+  //                        Helper Methods
+
+  var isDirection = function(direction, test){
+    var testDirection = 0;
+    if(test === "Left"){
+      testDirection = 1;
+    }else if(test === "In Front"){
+      testDirection = 2;
+    }else if(test === "Right"){
+      testDirection = 3;
+    }
+    return (testDirection === direction);
+  };
+
+  var resetState = function(state){
+    setTimeout(function(){
+      state.current = false
+    }, 10);
+  };
+
+  var drivingTimeout = null;
+  var stopDrivingAfterTime = function(){
+    if(status.driveTime != 0){
+      if(drivingTimeout != null){
+        clearTimeout(drivingTimeout);
+      }
+      drivingTimeout = setTimeout(function() {
+        ext.stopDriving();
+      }, (status.driveTime === 1 ? 100 : 1000));
+    }
+  };
+
+  var getCubeNumber = function(cube){
+    var num = 0;
+    if(cube === "Cube #1"){
+      num = 1;
+    }else if(cube === "Cube #2"){
+      num = 2;
+    }else if(cube === "Cube #3"){
+      num = 3;
+    }
+    return num;
+  };
+
+  var resetTapped = function(num){
+    setTimeout(function(){
+      status.tapped[num] = false
+    }, 10);
+  };
+
+  var getHexFromColor(color){
     if(color === "White")
       return "#ffffff";
     else if (color === "Red")
@@ -79,170 +298,6 @@
     else
       return "off";
   };
-
-  ext.getHex = function(red, green, blue){
-    var componentToHex = function(c) {
-      if(c < 0)
-        return "00";
-      else if(c > 255)
-        return "ff";
-      else{
-        var hex = parseInt(c).toString(16);
-        return hex.length == 1 ? "0" + hex : hex;
-      }
-    }
-    return "#" + componentToHex(red) + componentToHex(green) + componentToHex(blue);
-  };
-
-  ext.getCube = function(cube){
-    if(cube === "Cube #1"){
-      return 1;
-    }else if(cube === "Cube #2"){
-      return 2;
-    }else if(cube === "Cube #3"){
-      return 3;
-    }
-    return 0;
-  };
-
-  ext.canSee = function(object){
-    if(object === "Any Cube")
-      return seeStatus.cube1 || seeStatus.cube2 || seeStatus.cube3;
-    if(object === "Cube #1")
-      return seeStatus.cube1;
-    if(object === "Cube #2")
-      return seeStatus.cube2;
-    if(object === "Cube #3")
-      return seeStatus.cube3;
-    if(object === "Charger")
-      return seeStatus.charger;
-    if(object === "Face")
-      return seeStatus.face;
-    if(object === "Pet")
-      return seeStatus.pet;
-    return false;
-  };
-
-  ext.setSpeed = function(speed){
-    states.speed = speed;
-  };
-
-  ext.driveForward = function(direction, distance, callback){
-    ext.sendCommand(callback, "drive", (direction === "Backward" ? -distance : distance) * 10.0, states.speed * 10.0);
-  };
-
-  ext.turn = function(degrees, direction, callback){
-    ext.sendCommand(callback, "turn", direction === "Left" ? degrees : -degrees);
-  };
-
-  ext.stopMotors = function(){
-    states.left_speed = 0;
-    states.right_speed = 0;
-    ext.sendCommand(null, "stop");
-  };
-
-  ext.tilt = function(degrees, callback){
-    ext.sendCommand(callback, "tilt", degrees);
-  };
-
-  ext.lift = function(distance, callback){
-    var dis = 0;
-    if(distance == "Top"){
-      dis = 1;
-    }else if(distance == "Middle"){
-      dis = 0.5;
-    }
-    ext.sendCommand(callback, "lift", dis);
-  };
-
-  ext.setVolume = function(volume){
-    var vol = 0.75;
-    if(volume === "High")
-      vol = 1;
-    else if(volume === "Low")
-      vol = 0.25;
-    else if(volume === "Mute")
-      vol = 0;
-    ext.sendCommand(null, "volume", vol);
-  };
-
-  ext.freeWill = function(state){
-    var data = "disable";
-    if(state === "Enable"){
-      data = "enable";
-    }
-    ext.sendCommand(null, "freewill", data);
-  };
-
-  ext.pickup = function(cube, callback){
-    ext.sendCommand(callback, "pickup", ext.getCube(cube));
-  };
-
-  ext.isTapped = function(cube){
-    if((cube === "Any Cube" || ext.getCube(cube) === 1) && tapStatus.cube1){
-      setTimeout(function(){
-        tapStatus.cube1 = false;
-      }, 10);
-      return true;
-    } else if((cube === "Any Cube" || ext.getCube(cube) === 2) && tapStatus.cube2){
-      setTimeout(function(){
-        tapStatus.cube2 = false;
-      }, 10);
-      return true;
-    }else if((cube === "Any Cube" || ext.getCube(cube) === 3) && tapStatus.cube3){
-      setTimeout(function(){
-        tapStatus.cube3 = false;
-      }, 10);
-      return true;
-    }
-    return false;
-  };
-
-  ext.isPickedUp = function(){
-    if(pickedUp.current && !pickedUp.last){
-      setTimeout(function(){
-        pickedUp.current = false;
-        pickedUp.last = true;
-      }, 10);
-      return true;
-    } else if (!pickedUp.current && pickedUp.last){
-      pickedUp.last = false;
-    }
-    return false;
-  };
-
-  ext.cliff = function(){
-    if(cliffFound.current && !cliffFound.last){
-      setTimeout(function(){
-        cliffFound.current = false;
-        cliffFound.last = true;
-      }, 10);
-      return true;
-    } else if (!cliffFound.current && cliffFound.last){
-      cliffFound.last = false;
-    }
-    return false;
-  };
-
-  ext.voltage = function(){
-    return voltage < 3.5;
-  };
-
-  ext.move = function(motor, direction, speed){
-    speed = (direction === "Forward" ? speed : -speed);
-    if(motor === "Both"){
-      states.left_speed = speed;
-      states.right_speed = speed;
-    }else if(motor === "Left"){
-      states.left_speed = speed;
-    }else if(motor === "Right"){
-      states.right_speed = speed;
-    }
-    ext.sendCommand(null, "speed", states.left_speed * 10.0, states.right_speed * 10.0, 1000);
-  };
-
-  //=============================================================
-  //                        Helper Methods
 
   //=============================================================
   //                     Connection Managment
@@ -267,7 +322,7 @@
       connection.supported = true;
     }
     if(!status.shutdown && connection.supported){
-      connection.socket = new WebSocket("ws://127.0.0.1:9090/ws");
+      connection.socket = new WebSocket("ws://localhost:9090/ws");
 
       connection.socket.onopen = function(event){
         connection.connected.controller = true;
@@ -312,6 +367,13 @@
           status.direction.cube[2] = parseInt(command[14]);
         } else if(name === "tapped"){
           status.tapped[parseInt(command[1]) - 1] = true;
+          status.wastapped[parseInt(command[1]) - 1] = true;
+          if(status.wasTappedTimeout != null){
+            clearTimeout(status.wasTappedTimeout);
+          }
+          status.wasTappedTimeout = setTimeout(function() {
+            status.wastapped[parseInt(command[1]) - 1] = false;
+          }, 1000);
         }
       };
     }
@@ -350,24 +412,25 @@
           ["w", "Move %n cm %m.direction", "block_moveDistance", 10 , "Forward"],
           ["w", "Turn %m.sideDirection %n degrees", "block_turnAngle", "Left", 90],
           [" ", "Drive %m.movement", "block_drive", "Forward"],
-          [" ", "Stop driving", "block_stopDriving", "Forward"],
+          [" ", "Stop driving", "block_stopDriving"],
           ["s"],
           ["w", "Tilt head to %n degrees", "block_tiltHead", 20],
           ["w", "Lift arm to %m.heights", "block_liftArm", "Top"],
           ["s"],
           [" ", "Set %m.lights to %m.colors", "block_colorLight", "Backpack", "White"],
           ["s"],
-          ["h", "When %m.cubes is tapped", "block_isTapped", "Any Cube"],
-          ["h", "When Cozmo is %m.places", "block_inPlace", "Picked Up"],
-          ["h", "When a cliff is found", "block_foundCliff"],
+          ["h", "When %m.cubes is tapped", "block_whenTapped", "Any Cube"],
+          ["h", "When Cozmo is %m.places", "block_whenPlace", "Picked Up"],
+          ["h", "When a cliff is found", "block_whenCliff"],
           ["s"],
-          ["w", "Pickup %m.cubes", "block_pickedUp", "Cube #1"],
-          ["w", "Place held cube on %m.cubes", "block_stackCube", "Cube #2"],
+          ["w", "Pickup %m.cube", "block_pickedUp", "Cube #1"], //add any cube to list
+          ["w", "Place held cube on %m.cube", "block_stackCube", "Cube #2"],
           [" ", "Stop everything Cozmo is doing", "block_Estop"],
-          [" ", "%m.states Cozmo's free will", "block_freeWill", "Enable"],
+          [" ", "%m.states Cozmo's free will", "block_freewill", "Enable"],
           ["s"],
           ["b", "Cozmo can see %m.objects?", "block_canSee", "Any Cube"],
-          ["b", "%m.objects is %m.cubeDirection of Cozmo?", "block_directionTo", "Face", "Left"],
+          ["b", "%m.cube was tapped?", "block_wasTapped", "Cube #1"],
+          ["b", "%m.objects is %m.cubeDirection of Cozmo?", "block_isDirection", "Face"],
           ["b", "Cozmo's battery is low?", "block_voltage"],
           ["s"],
           [" ", "Set driving time to %m.time", "block_setTime", "Short"],
