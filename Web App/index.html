@@ -6,23 +6,39 @@
   <title>Cozmo Controller</title>
   <link rel="icon"
       type="image/png"
-      href="https://images-na.ssl-images-amazon.com/images/I/61C3TatAZBL._SL1000_.jpg">
+      href="C:\Users\konno\Pictures\Cozmo.png">
       <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
-  <link rel="stylesheet" type="text/css" href="/theme.css">
-  <script src="/connector.js"></script>
+  <link rel="stylesheet" type="text/css" href="theme.css">
+  <script src="connector.js"></script>
 </head>
 
 <body>
+  <img class="cozmo" src="C:\Users\konno\Pictures\Cozmo.png" style="z-index: -1;">
   <div>
     <p class="info">^ Close this tab to close Cozmo Controller ^</p>
     <div class="centerDiv">
-    <p class="step">Connecting to Cozmo controller...</p>
-    <div class="spinner">
-      <div class="cube1"></div>
-      <div class="cube2"></div>
+      <p class="step">Connecting to Cozmo controller...</p>
+      <div class="spinner">
+        <div class="cube1"></div>
+        <div class="cube2"></div>
+      </div>
+      <div class="editorList">
+        <a href="http://scratchx.org/?url=https://madfrog54321.github.io/ScratchCozmoSDK/Cozmo_Extension.js"><div>
+          <h4>ScratchX</h4>
+          <img class="editorImage" src="C:\Users\konno\Pictures\ScratchLogo.png"/>
+          <p></p>
+        </div></a>
+        <a href="http://192.168.0.5/blockly" style="pointer-events: none; cursor: default;"><div>
+          <h4>Blockly</h4>
+          <h5>Coming Soon</h5>
+          <img class="editorImage" src="C:\Users\konno\Pictures\BlocklyLogo.png" style="filter: grayscale(1);"/>
+          <!--<p class="info">Use ScratchX to create sprite files for face animations.</p>-->
+        </div></a>
+      </div>
+      <button class="stopButton" onclick="stopMotors();">Stop Cozmo's Motors</button>
+      <p class="deviceInfo">Go to <a href="http://192.168.0.5/cozmo">http://192.168.0.5/cozmo</a> on another device to program from there</p>
     </div>
-    <button class="stopButton" onclick="stopMotors();">Stop Cozmo's Motors</a>
   </div>
-  </div>
+  <script>goGreen();</script>
 </body>
 </html>

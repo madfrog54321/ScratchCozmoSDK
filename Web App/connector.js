@@ -13,20 +13,24 @@ function setColor(back, front, text, loading, button){
   $(".step").css("color",front);
   $(".info").css("color",front);
   $(".step").text(text);
-  $(".spinner").css("display", (loading ? "block" : "none"));
-  $(".stopButton").css("display", (button ? "block" : "none"));
+  $(".spinner").css("display", (loading ? "" : "none"));
+  $(".stopButton").css("display", (button ? "" : "none"));
+  $(".editorList").css("display", (button ? "" : "none"));
+  $(".deviceInfo").css("display", (button ? "" : "none"));
 }
 
 function goRed(){
   setColor("#FF4136", "white", "Waiting for phone...", true, false);
 };
 
+/*
 function goYellow(){
   setColor("#FFDC00", "black", "Waiting for Scratch...", true, false);
 };
+*/
 
 function goGreen(){
-  setColor("#2ECC40", "white", "Time to program!", false, true);
+  setColor("#2ECC40", "white", "Time to program! Choose your editor...", false, true);
 };
 
 function goBlack(){
@@ -82,4 +86,4 @@ var startSocket = function(){
 };
 
 goBlack();
-startSocket();
+//startSocket();
