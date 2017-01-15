@@ -40,6 +40,10 @@
     voltage: 0,
     speed: 50,
     waitForFinish: true,
+    spriteAnimation: 0,
+    animationDelay: 0,
+    animationTimeout: null,
+    threshold: 100,
     driveTime: 0,
     shutdown: false
   };
@@ -47,31 +51,31 @@
   //=============================================================
   //                           Blocks
 
-  var block_speak = function(text, callback) {
+  ext.block_speak = function(text, callback) {
     sendCommand(callback, "speak", text);
   };
 
-  var block_playEmotion = function(emotion, callback){
+  ext.block_playEmotion = function(emotion, callback){
     sendCommand(callback, "playEmotion", emotion);
   };
 
-  var block_playAnimation = function(animation, callback){
+  ext.block_playAnimation = function(animation, callback){
     sendCommand(callback, "playAnimation", animation);
   };
 
-  var block_setSpeed = function(speed){
+  ext.block_setSpeed = function(speed){
     status.speed = float(speed) * MM_to_CM;
   };
 
-  var block_moveDistance = function(distance, direction, callback){
+  ext.block_moveDistance = function(distance, direction, callback){
     sendCommand(callback, "moveDistance", distance * (direction === "Forward" ? 1 : -1) * MM_to_CM, status.speed);
   };
 
-  var block_turnAngle = function(direction, angle, callback){
+  ext.block_turnAngle = function(direction, angle, callback){
     sendCommand(callback, "turnAngle", angle * (direction === "Left" ? -1 : 1));
   };
 
-  var block_drive = function(direction){
+  ext.block_drive = function(direction){
     var left = 1
     var right = 1
     if(direction == "Backward"){
@@ -94,15 +98,15 @@
     stopDrivingAfterTime();
   };
 
-  var block_stopDriving = function(){
+  ext.block_stopDriving = function(){
     sendCommand(null, "stopDriving");
   };
 
-  var block_tiltHead = function(angle, callback){
+  ext.block_tiltHead = function(angle, callback){
     sendCommand(callback, "tiltHead", angle);
   };
 
-  var block_liftArm = function(height, callback){
+  ext.block_liftArm = function(height, callback){
     var rawHeight = 0;
     if(height === "Middle"){
       rawHeight = 0.5;
@@ -112,11 +116,11 @@
     sendCommand(callback, "liftArm", rawHeight, 100, 0.5);
   };
 
-  var block_colorLight = function(light, color){
+  ext.block_colorLight = function(light, color){
     sendCommand(null, "colorLight", light, getHexFromColor(color));
   };
 
-  var block_whenTapped = function(cube){
+  ext.block_whenTapped = function(cube){
     var num = getCubeNumber(cube);
     var tapped = false;
     for(var i = 0; i < status.tapped.length; i++){
@@ -127,7 +131,7 @@
     return tapped;
   };
 
-  var block_whenPlace = function(place){
+  ext.block_whenPlace = function(place){
     if(place === "Picked Up"){
       if(status.state.inHand.current === true && status.state.inHand.last === false){
         resetState(status.state.inHand);
@@ -153,7 +157,7 @@
     return false;
   };
 
-  var block_whenCliff = function(){
+  ext.block_whenCliff = function(){
     if(status.cliff.current === true && status.cliff.last === false){
       resetState(status.cliff);
       return true;
@@ -163,23 +167,23 @@
     return false;
   };
 
-  var block_pickedUp = function(cube, callback){
+  ext.block_pickedUp = function(cube, callback){
     sendCommand(callback, "pickedUp", getCubeNumber(cube));
   };
 
-  var block_stackCube = function(cube, callback){
+  ext.block_stackCube = function(cube, callback){
     sendCommand(callback, "stackCube", getCubeNumber(cube));
   };
 
-  var block_Estop = function(){
+  ext.block_Estop = function(){
     sendCommand(null, "Estop");
   };
 
-  var block_freewill = function(state){
+  ext.block_freewill = function(state){
     sendCommand(null, "freewill", state);
   };
 
-  var block_canSee = function(object){
+  ext.block_canSee = function(object){
     if(object === "face"){
       return status.canSee.face;
     }else if(object === "pet"){
@@ -192,11 +196,11 @@
     return false;
   };
 
-  var block_wasTapped = function(cube){
+  ext.block_wasTapped = function(cube){
     return status.wasTapped[getCubeNumber(cube)];
   };
 
-  var block_isDirection = function(object, direction){
+  ext.block_isDirection = function(object, direction){
     if(object === "Any Cube"){
       return isDirection(status.direction.cube[0], direction) ||
              isDirection(status.direction.cube[1], direction) ||
@@ -212,11 +216,11 @@
     }
   };
 
-  var block_voltage = function(){
+  ext.block_voltage = function(){
     return status.voltage < 3.5;
   };
 
-  var block_setTime = function(time){
+  ext.block_setTime = function(time){
     if(time === "Short")
       status.driveTime = 1;
     else if(time === "Long")
@@ -225,12 +229,61 @@
       status.driveTime = 0;
   };
 
-  var block_stopWaiting = function(state){
+  ext.block_stopWaiting = function(state){
     status.waitForFinish = (state === "Start");
+  };
+
+  ext.block_setVolume = function(volume){
+    var rawVolume = 0.66;
+    if(volume === "High")
+      rawVolume = 1;
+    else if(volume === "Low")
+      rawVolume = 0.33;
+    else
+      rawVolume = 0;
+    sendCommand(null, "setVolume", rawVolume);
+  };
+
+  ext.block_openStream = function(){
+    sendCommand(null, "openStream");
+  };
+
+  ext.block_loadSprite = function(sprite){
+    sendCommand(null, "loadSprite", sprite);
+  };
+
+  ext.block_showCostume = function(costume, sprite){
+    sendCommand(null, "showCostume", costume, sprite, status.threshold);
+  };
+
+  ext.block_animateSprite = function(sprite, fps){
+    status.animationDelay = (1.0 / fps) * 1000;
+    if(animationTimeout != null){
+      clearTimeout(animationTimeout);
+    }
+    animate(sprite);
+  };
+
+  ext.block_stopSprite = function(){
+    if(animationTimeout != null){
+      clearTimeout(animationTimeout);
+    }
+    sendCommand(null, "stopSprite");
+  };
+
+  ext.block_setThreshold = function(threshold){
+    status.threshold = threshold;
   };
 
   //=============================================================
   //                        Helper Methods
+
+  var animate = function(sprite){
+    animationTimeout = setTimeout(function(){
+      sendCommand(null, "stepCostume", sprite, status.threshold);
+      animate();
+    }, status.animationDelay);
+  };
 
   var isDirection = function(direction, test){
     var testDirection = 0;
@@ -305,13 +358,18 @@
   var sendCommand = function(callback, command){
     if(connection.connected.robot){
       var messageID = ++connection.msgCount;
-      connection.pendingCommands[String(messageID)] = callback;
       //console.log(arguments);
       var data = Array.prototype.splice.call(arguments, 2);
       var message = command + "," + connection.id + "," + messageID + ",";
       message += data.join();
       //console.log("Sending Command: " + message);
       socket.send(message);
+      if(status.waitForFinish){
+        connection.pendingCommands[String(messageID)] = callback;
+      }else{
+        connection.pendingCommands[String(messageID)] = null;
+        callback();
+      }
     } else if(callback != null){
       callback();
     }
@@ -439,11 +497,11 @@
           ["s"],
           [" ", "Open video stream viewer", "block_openStream"],
           ["s"],
-          [" ", "Load sprite from file %s", "loadSprite", "demo.sprite2"],
-          [" ", "Show costume %s of sprite %s", "test", "walking", "scratch"],
-          [" ", "Animate sprite %s at %n fps", "test", "scratch", "1"],
-          [" ", "Stop animating sprite", "test"],
-          [" ", "Set display threshold to %n", "test", "100"],
+          [" ", "Load sprite from file %s", "block_loadSprite", "demo.sprite2"],
+          [" ", "Show costume %s of sprite %s", "block_showCostume", "walking", "scratch"],
+          [" ", "Animate sprite %s at %n fps", "block_animateSprite", "scratch", "1"],
+          [" ", "Reset Cozmo's face", "block_stopSprite"],
+          [" ", "Set display threshold to %n", "block_setThreshold", "100"],
       ],
       menus: {
         colors: ["Off", "White", "Red", "Orange","Yellow", "Green", "Blue", "Purple"],
