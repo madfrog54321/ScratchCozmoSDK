@@ -1,0 +1,38 @@
+{
+	"objName": "Sprite1",
+	"sounds": [{
+			"soundName": "pop",
+			"soundID": 0,
+			"md5": "83a9787d4cb6f3b7632b4ddfebf74367.wav",
+			"sampleCount": 258,
+			"rate": 11025,
+			"format": ""
+		}],
+	"costumes": [{
+			"costumeName": "google",
+			"baseLayerID": 0,
+			"baseLayerMD5": "89c7b5b24db3ad4f321806ecf7a8d52b.png",
+			"bitmapResolution": 2,
+			"rotationCenterX": 344,
+			"rotationCenterY": 104
+		},
+		{
+			"costumeName": "arduino",
+			"baseLayerID": 1,
+			"baseLayerMD5": "2e1eb22f6af34d6dfc03f33d59756676.png",
+			"bitmapResolution": 2,
+			"rotationCenterX": 332,
+			"rotationCenterY": 236
+		}],
+	"currentCostumeIndex": 0,
+	"scratchX": 0,
+	"scratchY": 0,
+	"scale": 1,
+	"direction": 90,
+	"rotationStyle": "normal",
+	"isDraggable": false,
+	"indexInLibrary": 100000,
+	"visible": true,
+	"spriteInfo": {
+	}
+}

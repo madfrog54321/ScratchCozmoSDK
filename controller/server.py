@@ -11,6 +11,7 @@ apps = []
 robotStatus = False
 clientStatus = False
 commandHandler = 0
+clientCount = 0
 
 class Server:
     def __init__(self, handler):
@@ -20,8 +21,8 @@ class Server:
     def setRobotStatus(self, status):
         global robotStatus
         robotStatus = status
-        self.sendToApp('status,robot,' + ('connected' if status else 'waiting'))
-        self.sendToClient('status,robot,' + ('connected' if status else 'waiting'))
+        self.sendToApp('cozmo,' + ('connected' if status else 'waiting'))
+        self.sendToClient('cozmo,' + ('connected' if status else 'waiting'))
 
     def sendToApp(self, command):
         global apps
@@ -54,7 +55,7 @@ class Server:
             if(self.isApp):
                 global apps
                 apps.remove(self)
-                print('Web app closed. Stopping server...')
+                print('[Server] Web app closed. Stopping server...')
                 tornado.ioloop.IOLoop.instance().stop()
             elif(self.isClient):
                 global clients
@@ -62,31 +63,34 @@ class Server:
                 if(len(clients) == 0):
                     clientStatus = False
                     for app in apps:
-                        app.write_message('status,client,waiting')
-                print('Client closed')
+                        app.write_message('client,waiting')
+                print('[Server] Client closed')
 
         def on_message(self, message):
             global clientStatus
             global robotStatus
             if(message == 'webApp'):
-                print('Connected to web app')
+                print('[Server] Connected to web app')
                 global apps
                 apps.append(self)
                 self.isApp = True
             elif(message == 'client'):
-                print('Connected to client')
+                print('[Server] Connected to client')
                 global clients
                 clientStatus = True
                 clients.append(self)
                 self.isClient = True
                 for app in apps:
-                    app.write_message('status,client,connected')
+                    app.write_message('client,connected')
             else:
                 global commandHandler
                 commandHandler(message)
             if(message == 'webApp' or message == 'client'):
-                self.write_message('status,robot,' + ('connected' if robotStatus else 'waiting'))
-                self.write_message('status,client,' + ('connected' if clientStatus else 'waiting'))
+                global clientCount
+                self.write_message('id,' + str(clientCount));
+                clientCount += 1;
+                self.write_message('cozmo,' + ('connected' if robotStatus else 'waiting'))
+                self.write_message('client,' + ('connected' if clientStatus else 'waiting'))
 
     def start(self):
         application = tornado.web.Application([
@@ -95,13 +99,14 @@ class Server:
         (r'/(theme\.css)', tornado.web.StaticFileHandler, {'path': 'Web App'}),
         (r'/(connector\.js)', tornado.web.StaticFileHandler, {'path': 'Web App'}),
         ])
-        print('Starting server...')
+        print('[Server] Starting server...')
         application.listen(9090)
-        print('Server ready at address: localhost:9090')
+        print('[Server] Server ready at address: localhost:9090')
+        print('[Server] Websockets ready at address: localhost:9090/ws')
         webbrowser.open('http://localhost:9090')
-        print('Web browser openned to: http://localhost:9090')
+        print('[Server] Web browser openned to: http://localhost:9090')
         tornado.ioloop.IOLoop.instance().start()
-        print('Server stopped')
+        print('[Server] Server stopped')
 
     def stop(self):
         tornado.ioloop.IOLoop.instance().stop()

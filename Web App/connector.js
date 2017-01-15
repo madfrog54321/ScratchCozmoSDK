@@ -53,31 +53,30 @@ var startSocket = function(){
   };
 
   socket.onmessage = function(event) {
+    console.log(event.data);
     var command = event.data.split(",");
-    var name = command[0], kind = command[1], status = command[2];
-    if(name === 'status'){
-      if(kind === 'robot'){
-        if(status === 'connected'){
-          robot = true;
-        }else if(status === 'waiting'){
-          robot = false;
-        }
-      } else if(kind === 'client'){
-        if(status === 'connected'){
-          client = true;
-        }else if(status === 'waiting'){
-          client = false;
-        }
+    var name = command[0];
+    if(name === 'cozmo'){
+      if(command[1] === 'connected'){
+        robot = true;
+      }else if(command[1] === 'waiting'){
+        robot = false;
       }
-      if(!robot){
-        goRed();
-      }else if(!client){
-        goYellow();
-      }else if(robot && client){
-        goGreen();
-      }else {
-        goBlack();
+    } else if(name === 'client'){
+      if(command[1] === 'connected'){
+        client = true;
+      }else if(command[1] === 'waiting'){
+        client = false;
       }
+    }
+    if(!robot){
+      goRed();
+    }else if(!client){
+      goYellow();
+    }else if(robot && client){
+      goGreen();
+    }else {
+      goBlack();
     }
   };
 };

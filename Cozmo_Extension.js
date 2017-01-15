@@ -1,11 +1,9 @@
 (function(ext) {
 
   var socket = null;
-
-  var doneEvent = {
-    done:false,
-    waiting:false
-  };
+  var client_id = -1;
+  var messageCount = 0;
+  var pendingCommands = {};
 
   var tapEvent = {
     tapped:false,
@@ -57,9 +55,19 @@
    }
   };
 
-  ext.sendCommand = function(command){
-    console.log('Sending Command: ' + command);
-    socket.send(command);
+  ext.sendCommand = function(callback, command){
+    if(status.connected){
+      var messageID = ++messageCount;
+      pendingCommands[String(messageID)] = callback;
+      console.log(arguments);
+      var data = Array.prototype.splice.call(arguments, 2);
+      var message = command + ',' + client_id + ',' + messageID + ',';
+      message += data.join();
+      console.log('Sending Command: ' + message);
+      socket.send(message);
+    } else if(callback != null){
+      callback();
+    }
   };
 
   // Status reporting code
@@ -74,17 +82,23 @@
   };
 
   ext.speak = function(data, callback) {
-    if (status.connected){
-      ext.sendCommand("speak," + data + ",-,-,wait");
-      ext.waitForDone(callback);
-    }else
-      callback();
+    ext.sendCommand(callback, 'say', data);
   };
 
-  ext.setCubeLight = function(cube, color){
-    if (status.connected){
-      ext.sendCommand("cubeLight," + cube + "," + color + ",-,async");
+  ext.setLight = function(light, color){
+    console.log(light + "," + color);
+    var hexColor = ext.getColor(color);
+    var object = '';
+    if(light == 'All Cubes'){
+      object = 'allcubes';
+    }else if (light == 'Backpack'){
+      object = 'backpack';
+    }else{
+      console.log('bob')
+      object = 'cube' + ext.getCube(light);
+      console.log('bob2')
     }
+    ext.sendCommand(null, "light", object, hexColor);
   };
 
   ext.getColor = function(color){
@@ -106,23 +120,6 @@
       return 'off';
   };
 
-  ext.getVolume = function(volume){
-    var vol = 0.75;
-    if(volume === 'High')
-      vol = 1;
-    else if(volume === 'Low')
-      vol = 0.25;
-    else if(volume === 'Mute')
-      vol = 0;
-    return vol;
-  };
-
-  ext.setBack = function(color) {
-    if (status.connected){
-      ext.sendCommand('backlight,' + color + ',-,-,async');
-    }
-  };
-
   ext.getHex = function(red, green, blue){
     var componentToHex = function(c) {
       if(c < 0)
@@ -137,18 +134,6 @@
     return "#" + componentToHex(red) + componentToHex(green) + componentToHex(blue);
   };
 
-  ext.setLight = function(light, color){
-    if(light === 'Backpack'){
-      ext.setBack(ext.getColor(color));
-    }else if(light === 'All Cubes'){
-      ext.setCubeLight(1, ext.getColor(color));
-      ext.setCubeLight(2, ext.getColor(color));
-      ext.setCubeLight(3, ext.getColor(color));
-    }else{
-      ext.setCubeLight(ext.getCube(light), ext.getColor(color));
-    }
-  };
-
   ext.getCube = function(cube){
     if(cube === 'Cube #1'){
       return 1;
@@ -156,9 +141,8 @@
       return 2;
     }else if(cube === 'Cube #3'){
       return 3;
-    }else{
-      return 0;
     }
+    return 0;
   };
 
   ext.canSee = function(object){
@@ -180,38 +164,25 @@
   };
 
   ext.setSpeed = function(speed){
-    speed = Math.max(Math.min(speed, 20), -20);
     states.speed = speed;
   };
 
   ext.driveForward = function(direction, distance, callback){
-    if (status.connected){
-      ext.sendCommand("drive," + (direction === 'Backward' ? -distance : distance) * 10.0 + "," + states.speed * 10.0 + ",-,wait");
-      ext.waitForDone(callback);
-    }else
-      callback();
+    ext.sendCommand(callback, "drive", (direction === 'Backward' ? -distance : distance) * 10.0, states.speed * 10.0);
   };
 
   ext.turn = function(degrees, direction, callback){
-    if (status.connected){
-      ext.sendCommand("turn," + (direction === 'Left' ? degrees : -degrees) + ",-,-,wait");
-      ext.waitForDone(callback);
-    }else
-      callback();
+    ext.sendCommand(callback, "turn", direction === 'Left' ? degrees : -degrees);
   };
 
   ext.stopMotors = function(){
     states.left_speed = 0;
     states.right_speed = 0;
-    ext.sendCommand('stop,-,-,-,continue');
+    ext.sendCommand(null, 'stop');
   };
 
   ext.tilt = function(degrees, callback){
-    if (status.connected){
-      ext.sendCommand("tilt," + degrees + ",-,-,wait");
-      ext.waitForDone(callback);
-    }else
-      callback();
+    ext.sendCommand(callback, "tilt", degrees);
   };
 
   ext.lift = function(distance, callback){
@@ -221,15 +192,18 @@
     }else if(distance == 'Middle'){
       dis = 0.5;
     }
-    if (status.connected){
-      ext.sendCommand("lift," + dis + ",-,-,wait");
-      ext.waitForDone(callback);
-    }else
-      callback();
+    ext.sendCommand(callback, "lift", dis);
   };
 
   ext.setVolume = function(volume){
-    ext.sendCommand("volume," + ext.getVolume(volume) + ",-,-,continue");
+    var vol = 0.75;
+    if(volume === 'High')
+      vol = 1;
+    else if(volume === 'Low')
+      vol = 0.25;
+    else if(volume === 'Mute')
+      vol = 0;
+    ext.sendCommand(null, "volume", vol);
   };
 
   ext.freeWill = function(state){
@@ -237,15 +211,11 @@
     if(state === 'Enable'){
       data = 'enable';
     }
-    ext.sendCommand("freewill," + data + ",-,-,continue");
+    ext.sendCommand(null, "freewill", data);
   };
 
   ext.pickup = function(cube, callback){
-    if (status.connected){
-      ext.sendCommand("pickup," + ext.getCube(cube) + ",-,-,wait");
-      ext.waitForDone(callback);
-    }else
-      callback();
+    ext.sendCommand(callback, "pickup", ext.getCube(cube));
   };
 
   ext.isTapped = function(cube){
@@ -300,7 +270,6 @@
 
   ext.move = function(motor, direction, speed){
     speed = (direction === 'Forward' ? speed : -speed);
-    speed = Math.max(Math.min(speed, 20), -20);
     if(motor === 'Both'){
       states.left_speed = speed;
       states.right_speed = speed;
@@ -309,20 +278,23 @@
     }else if(motor === 'Right'){
       states.right_speed = speed;
     }
-    ext.sendCommand("speed," + states.left_speed * 10.0 + "," + states.right_speed * 10.0 + ",-,continue");
+    ext.sendCommand(null, "speed", states.left_speed * 10.0, states.right_speed * 10.0, 1000);
   };
 
   // Block and block menu descriptions
   var descriptor = {
       blocks: [
           // Block type, block name, function name, param1 default value, param2 default value
-          ['w', 'Cozmo say %s', 'speak', 'hi im cozmo'],
+          ['w', 'Say %s', 'speak', 'hi im cozmo'],
+          [' ', 'Look %m.emotions', 'behavior', 'Amazed'],
+          [' ', 'Play %m.animations animation', 'behavior', 'Sneeze'],
           ['s'], ['s'],
-          [' ', 'Set track speed to %n cm/s', 'setSpeed', 5],
-          ['w', 'Drive %m.direction %n cm', 'driveForward' , 'Forward', 10],
-          ['w', 'Turn %n degrees %m.sideDirection', 'turn', 90, 'Left'],
-          [' ', 'Move %m.motors track %m.direction at %n cm/s', 'move', 'Both', 'Forward', 5],
-          [' ', "Stop Cozmo's motors", 'stopMotors'],
+          [' ', 'Set speed to %n cm/s', 'setSpeed', 5],
+          ['w', 'Move %n cm %m.direction', 'driveForward', 10 , 'Forward'],
+          ['w', 'Turn %m.sideDirection %n degrees', 'turn', 'Left', 90],
+          //[' ', 'Move %m.motors track %m.direction at %n cm/s', 'move', 'Both', 'Forward', 5
+          [' ', 'Drive %m.movement', 'move', 'Forward'],
+          [' ', 'Stop driving', 'stopMove', 'Forward'],
           ['s'], ['s'],
           ['w', 'Tilt head to %n degrees', 'tilt', 20],
           ['w', 'Move lift to %m.heights', 'lift', 'Top'],
@@ -333,18 +305,23 @@
           //['r', '%m.colors', 'getColor', 'White'],
           //['r', 'Red %n Green %n Blue %n', 'getHex', 255, 255, 255],
           ['s'], ['s'],
-          //[' ', 'Set animation/face', 'face'],
-          //[' ', 'Do behavior', 'behavior'],
-          [' ', "Set Cozmo's volume to %m.volume", 'setVolume', 'Medium'],
-          [' ', "%m.states Cozmo's free will", 'freeWill', 'Enable'],
-          ['w', 'Pickup %m.cube', 'pickup', 'Cube #1'],
-          ['s'], ['s'],
           ['h', 'When %m.cubes is tapped', 'isTapped', 'Any Cube'],
-          ['h', 'When Cozmo is picked up', 'isPickedUp'],
+          ['h', 'When Cozmo is %m.places', 'isPickedUp', 'Picked Up'],
           ['h', 'When cliff found', 'cliff'],
           ['s'], ['s'],
-          ['b', 'Cozmo can see %m.objects', 'canSee', 'Any Cube'],
-          ['b', "Cozmo's battery is low", 'voltage'],
+          //[' ', 'Set animation/face', 'face'],
+          ['w', 'Pickup %m.cube', 'pickup', 'Cube #1'],
+          ['w', 'Place held cube on %m.cube', 'pickup', 'Cube #2'],
+          [' ', "Stop everything Cozmo is doing", 'stopMotors'],
+          [' ', "%m.states Cozmo's free will", 'freeWill', 'Enable'],
+          ['s'], ['s'],
+          ['b', 'Cozmo can see %m.objects?', 'canSee', 'Any Cube'],
+          ['b', "%m.cube is %m.cubeDirection of Cozmo?", 'canSee', 'Cube #1', 'Left'],
+          ['b', "Cozmo's battery is low?", 'voltage'],
+          ['s'], ['s'],
+          [' ', 'Set driving time to %m.time', 'bob', 'Short'],
+          [' ', '%m.motion waiting for actions to finish', 'bob', 'Stop'],
+          [' ', "Set Cozmo's volume to %m.volume", 'setVolume', 'Medium']
       ],
       menus: {
         colors: ['Off', 'White', 'Red', 'Orange','Yellow', 'Green', 'Blue', 'Purple'],
@@ -358,25 +335,15 @@
         states: ['Enable', 'Disable'],
         flow: ['Wait', 'Continue'],
         motors: ['Both', 'Left', 'Right'],
-        heights: ['Top', 'Middle', 'Bottom']
+        heights: ['Top', 'Middle', 'Bottom'],
+        motion: ['Start', 'Stop'],
+        movement: ['Forward', 'Backward', 'Left', 'Right', 'Sharp Left', 'Sharp Right'],
+        time: ['Short', 'Long', 'Forever'],
+        places: ['Placed On Tracks', 'Rolled On Side', 'Picked Up'],
+        cubeDirection: ['Left', 'In Front', 'Right'],
+        emotions: ['Upset', 'Pleased', 'Happy', 'Amazed', 'Angry', 'Bored', 'Startled'],
+        animations: ['Greeting', 'Sneeze', 'What?', 'Win', 'Lose', 'Facepalm', 'Beeping', 'New Object', 'Lost Somthing', 'Reject', 'Failed', 'Excited Greeting', 'Talkative Greeting']
       }
-  };
-
-  ext.waitForDone = function(callback){
-      doneEvent.waiting = true;
-      var loop = function() {
-        if(status.connected){
-          if(doneEvent.done){
-            doneEvent.waiting = false;
-            doneEvent.done = false;
-            callback();
-          }
-          else
-            setTimeout(loop, 50);
-        } else
-          callback();
-      };
-      loop();
   };
 
   // Register the extension
@@ -402,48 +369,34 @@
         console.log('Event: ' + event.data)
         var command = event.data.split(",");
         var name = command[0];
-        var kind = command[1];
-        var data = command[2];
-        if(name === 'status'){
-          if(kind === 'robot'){
-            if(data === 'connected'){
-              status.robot = true;
-            }else if(data === 'waiting'){
-              status.robot = false;
-            }
-          }
-        } else if(name === 'done'){
-          if(doneEvent.waiting){
-            doneEvent.done = true;
-          }
-        } else if(name === 'see'){
-          if(kind === 'face'){
-            seeStatus.face = (data === 'yes');
-          } else if(kind === 'pet'){
-            seeStatus.pet = (data === 'yes');
-          } else if(kind === 'charger'){
-            seeStatus.charger = (data === 'yes');
-          } else if(kind === 'cube1'){
-            seeStatus.cube1 = (data === 'yes');
-          } else if(kind === 'cube2'){
-            seeStatus.cube2 = (data === 'yes');
-          } else if(kind === 'cube3'){
-            seeStatus.cube3 = (data === 'yes');
-          }
+        if(name == 'id'){
+          client_id = command[1];
+        }if(name === 'cozmo'){
+          if(command[1] === 'connected'){ status.robot = true; }
+          else if(command[1] === 'waiting'){ status.robot = false; }
+        } else if(name === 'finished' && command[2] == client_id){
+          callback = pendingCommands[command[3]];
+          delete pendingCommands[command[3]];
+          callback();
+        } else if(name === 'status'){
+          voltage = parseFloat(command[1]);
+          pickedUp.current = (command[2] == 'True');
+          //onTracks
+          cliffFound.current = (command[4] == 'True');
+          seeStatus.face = (command[5] == 'True');
+          seeStatus.pet = (command[6] == 'True');
+          seeStatus.charger = (command[10] == 'True');
+          seeStatus.cube1 = (command[7] == 'True');
+          seeStatus.cube2 = (command[8] == 'True');
+          seeStatus.cube3 = (command[9] == 'True');
         } else if(name === 'tapped'){
-          if(kind === 'cube1'){
-            tapStatus.cube1 = (data === 'yes');
-          } else if(kind === 'cube2'){
-            tapStatus.cube2 = (data === 'yes');
-          } else if(kind === 'cube3'){
-            tapStatus.cube3 = (data === 'yes');
+          if(command[1] === '1'){
+            tapStatus.cube1 = true;
+          } else if(command[1] === '2'){
+            tapStatus.cube2 = true;
+          } else if(command[1] === '3'){
+            tapStatus.cube3 = true;
           }
-        } else if(name === 'pickedUp'){
-          pickedUp.current = (data === 'yes');
-        } else if(name === 'cliff'){
-          cliffFound.current = (data === 'yes');
-        } else if(name === 'voltage'){
-          voltage = parseFloat(data);
         }
       };
     }
