@@ -363,7 +363,7 @@
       var message = command + "," + connection.id + "," + messageID + ",";
       message += data.join();
       //console.log("Sending Command: " + message);
-      socket.send(message);
+      connection.socket.send(message);
       if(status.waitForFinish){
         connection.pendingCommands[String(messageID)] = callback;
       }else{
@@ -495,7 +495,7 @@
           [" ", "%m.motion waiting for actions to finish", "block_stopWaiting", "Stop"],
           [" ", "Set Cozmo's volume to %m.volume", "block_setVolume", "Medium"],
           ["s"],
-          [" ", "Open video stream viewer", "block_openStream"],
+          [" ", "Open camera viewer", "block_openStream"],
           ["s"],
           [" ", "Load sprite from file %s", "block_loadSprite", "demo.sprite2"],
           [" ", "Show costume %s of sprite %s", "block_showCostume", "walking", "scratch"],

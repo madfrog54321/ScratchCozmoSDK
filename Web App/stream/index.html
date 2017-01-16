@@ -1,0 +1,52 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Cozmo Camera</title>
+  <link rel="icon"
+      type="image/png"
+      href="http://image.flaticon.com/icons/png/512/1/1138.png">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+  <script>
+    var interval = null;
+    $(document).ready(function()
+    {
+        $(".streamImage").on("error", function(){
+            clearInterval(interval)
+            interval = null;
+            $(this).attr('src', 'https://s-media-cache-ak0.pinimg.com/originals/cb/05/42/cb05420fec7a12bb752da11df0fb553f.gif');
+            setTimeout(function(){
+              if(interval == null){
+                interval = setInterval(updateImage , 100);
+              }
+            }, 2900);
+        });
+    });
+
+    function updateImage()
+    {
+        $(".streamImage").attr("src", "stream?image=" + (new Date()).getTime());
+    }
+    interval = setInterval(updateImage , 100);
+  </script>
+  <style>
+    html, body{
+      margin:0px;
+      height: 100%;
+    }
+    body {
+      display: flex;
+    }
+    .streamImage{
+      object-fit: cover;
+      height:100%;
+      width:100%;
+    }
+  </style>
+</head>
+
+<body>
+  <img class="streamImage" src="" style="z-index: -1;" width=300 height=300>
+</body>
+</html>

@@ -10,6 +10,7 @@ import time
 import queue
 from functools import partial
 import math
+import io
 
 updateCount = 0
 failedCount = 0
@@ -51,6 +52,12 @@ class ParsedCommand:
 def handleCommand(message):
     commandQueue.put(ParsedCommand(message))
     print('[Server] Received Command: ' + message)
+
+def handleCamera():
+    global robot
+    fobj = io.BytesIO()
+    robot.world.latest_image.raw_image.save(fobj, format="jpeg")
+    return fobj.getvalue()
 
 def on_cubeTapped(evt, *, obj, tap_count, **kwargs):
     cube = 0
@@ -206,6 +213,7 @@ def cozmo_program(sdk_conn):
     robot = sdk_conn.wait_for_robot()
     print("[Robot] Connected to Cozmo!")
     robot.say_text('i am connected')
+    robot.camera.image_stream_enabled = True
     commander.setRobotStatus(True)
     robot.world.add_event_handler(cozmo.objects.EvtObjectTapped, on_cubeTapped)
     while not shutdown and robot.conn.is_connected:
@@ -253,6 +261,6 @@ if __name__ == "__main__":
 
     threading.Thread(target=startCozmo).start()
 
-    commander = server.Server(handleCommand)
+    commander = server.Server(handleCommand, handleCamera)
     commander.start()
     shutdown = True;

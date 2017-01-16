@@ -33,12 +33,15 @@ apps = []
 robotStatus = False
 clientStatus = False
 commandHandler = 0
+cameraHandler = 0
 clientCount = 0
 
 class Server:
-    def __init__(self, handler):
+    def __init__(self, handler, camera):
         global commandHandler
+        global cameraHandler
         commandHandler = handler
+        cameraHandler = camera
 
     def setRobotStatus(self, status):
         global robotStatus
@@ -65,6 +68,17 @@ class Server:
         def get(self):
             loader = tornado.template.Loader(".")
             self.write(loader.load("Web App/blockly/blockly.html").generate())
+
+    class StreamHandler(tornado.web.RequestHandler):
+        def get(self):
+            loader = tornado.template.Loader(".")
+            argument = self.get_argument("image",  default=None)
+            if not argument == None:
+                global cameraHandler
+                self.write(cameraHandler())
+                self.set_header("Content-type",  "image/png")
+            else:
+                self.write(loader.load("Web App/stream/index.html").generate())
 
     class WSHandler(tornado.websocket.WebSocketHandler):
         def __init__(self, a, b):
@@ -125,6 +139,8 @@ class Server:
         (r'/', Server.MainHandler),
         (r'/blockly', Server.BlocklyHandler),
         (r'/blockly/code/(.*)', tornado.web.StaticFileHandler, {'path': 'blockly'}),
+        (r'/stream', Server.StreamHandler),
+        (r'/stream/(.*)', tornado.web.StaticFileHandler, {'path': 'Web App/stream'}),
         (r'blockly/code/msg/js/(en.js)', tornado.web.StaticFileHandler, {'path': 'blockly/msg/js'}),
         (r'/(theme\.css)', tornado.web.StaticFileHandler, {'path': 'Web App'}),
         (r'/(connector\.js)', tornado.web.StaticFileHandler, {'path': 'Web App'}),
