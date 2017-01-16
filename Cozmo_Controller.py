@@ -14,6 +14,7 @@ import queue
 from functools import partial
 import math
 import io
+import argparse
 
 updateCount = 0
 failedCount = 0
@@ -203,7 +204,7 @@ def runCommand(robot, command):
 
         failedCount = 0
         pendingCommand = False
-        if not action == False:
+        if action:
             callback = partial(actionCallback, command)
             action.add_event_handler(cozmo.action.EvtActionCompleted, callback)
         else:
@@ -257,9 +258,9 @@ def startCozmo():
         try:
             cozmo.run.connect(cozmo_program)
         except cozmo.SDKVersionMismatch as e:
-            print('[Error] Update both Cozmo\'s app and the Cozmo SDK')
+            print("[Error] Update both Cozmo's app and the Cozmo SDK")
         except cozmo.NoDevicesFound as e:
-            print('[Notice] No phone running Cozmo\'s app found. Waiting for phone...')
+            print("[Notice] No phone running Cozmo's app found. Waiting for phone...")
         except cozmo.ConnectionAborted as e:
             print('[Error] Cozmo was disconnected')
         except cozmo.ConnectionCheckFailed as e:
@@ -272,8 +273,14 @@ def startCozmo():
 if __name__ == "__main__":
     print('=== Cozmo Controller v0.2.8 ===')
 
+    parser = argparse.ArgumentParser(description='Cozmo_Controller')
+    parser.add_argument('externalHostname', metavar='externalHostname', nargs='?', default='localhost',
+                        help='external hostname/ip-address the application can be accesed by')
+
+    args = parser.parse_args()
+
     threading.Thread(target=startCozmo).start()
 
-    commander = server.Server(handleCommand, handleCamera)
+    commander = server.Server(handleCommand, handleCamera, args.externalHostname)
     commander.start()
     shutdown = True;

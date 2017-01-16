@@ -11,27 +11,8 @@ except ImportError:
 import webbrowser
 import os
 import socket
+import netifaces
 
-if os.name != "nt":
-    import fcntl
-    import struct
-    def get_interface_ip(ifname):
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack('256s',ifname[:15]))[20:24])
-
-def get_lan_ip():
-    ip = socket.gethostbyname(socket.gethostname())
-    if ip.startswith("127.") and os.name != "nt":
-        interfaces = ["eth0","eth1","eth2","wlan0","wlan1","wifi0","ath0","ath1","ppp0",]
-        for ifname in interfaces:
-            try:
-                ip = get_interface_ip(ifname)
-                break
-            except IOError:
-                pass
-    return ip
-
-serverIP = get_lan_ip()
 clients = []
 apps = []
 robotStatus = False
@@ -41,11 +22,12 @@ cameraHandler = 0
 clientCount = 0
 
 class Server:
-    def __init__(self, handler, camera):
+    def __init__(self, handler, camera, serverHost='localhost'):
         global commandHandler
         global cameraHandler
         commandHandler = handler
         cameraHandler = camera
+        self.serverHost = serverHost
 
     def setRobotStatus(self, status):
         global robotStatus
@@ -63,10 +45,14 @@ class Server:
         for client in clients:
             client.write_message(command)
 
-    class MainHandler(tornado.web.RequestHandler):
+    class IpTemplateHandler(tornado.web.RequestHandler):
+        def initialize(self, filename, host):
+            self.filename = filename
+            self.host = host
+
         def get(self):
             loader = tornado.template.Loader(".")
-            self.write(loader.load("Web App/index.html").generate(ipAddress=serverIP))
+            self.write(loader.load(self.filename).generate(host=self.host))
 
     class BlocklyHandler(tornado.web.RequestHandler):
         def get(self):
@@ -145,24 +131,25 @@ class Server:
     def start(self):
         application = tornado.web.Application([
         (r'/ws', Server.WSHandler),
-        (r'/', Server.MainHandler),
+        (r'/', Server.IpTemplateHandler, {'filename': 'Web App/index.html', 'host': self.serverHost}),
+        (r'/Cozmo_Extension.js', Server.IpTemplateHandler, {'filename': 'Cozmo_Extension.js', 'host': self.serverHost}),
+        (r'/connector.js', Server.IpTemplateHandler, {'filename': 'Web App/connector.js', 'host': self.serverHost}),
         (r'/blockly', Server.BlocklyHandler),
         (r'/blockly/code/(.*)', tornado.web.StaticFileHandler, {'path': 'blockly'}),
         (r'/stream', Server.StreamHandler),
         (r'/stream/(.*)', tornado.web.StaticFileHandler, {'path': 'Web App/stream'}),
         (r'blockly/code/msg/js/(en.js)', tornado.web.StaticFileHandler, {'path': 'blockly/msg/js'}),
         (r'/(theme\.css)', tornado.web.StaticFileHandler, {'path': 'Web App'}),
-        (r'/(connector\.js)', tornado.web.StaticFileHandler, {'path': 'Web App'}),
         (r'/image/(scratch\.png)', tornado.web.StaticFileHandler, {'path': 'Web App/images'}),
         (r'/image/(blockly\.png)', tornado.web.StaticFileHandler, {'path': 'Web App/images'}),
         (r'/image/(cozmo\.png)', tornado.web.StaticFileHandler, {'path': 'Web App/images'}),
         ])
         print('[Server] Starting server...')
         application.listen(9090)
-        print('[Server] Server ready at address: localhost:9090')
-        print('[Server] Websockets ready at address: localhost:9090/ws')
-        webbrowser.open('http://localhost:9090')
-        print('[Server] Web browser openned to: http://localhost:9090')
+        print("[Server] Server ready at: {}:9090".format(self.serverHost))
+        print("[Server] Websockets ready at: {}:9090/ws".format(self.serverHost))
+        webbrowser.open("http://localhost:9090")
+        print("[Server] Web browser openned to: http://{}:9090".format(self.serverHost))
         tornado.ioloop.IOLoop.instance().start()
         print('[Server] Server stopped')
 
