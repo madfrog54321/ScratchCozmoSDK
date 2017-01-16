@@ -14,12 +14,10 @@ $ pip3 install --user tornado pillow numpy cozmo[camera]
 
 3. Connect Cozmo to your phone/tablet with the app
 
-4. Download [this repository](https://github.com/madfrog54321/ScratchCozmoSDK/archive/gh-pages.zip)
+4. Download the [Cozmo Controller](https://github.com/madfrog54321/ScratchCozmoSDK/releases/download/v2.0.0/ScratchCozmoSDK.zip) app
 
 5. Unzip the file into a folder
 
 6. Run `Cozmo_Controller.py`
 
-7. [Open ScratchX](http://scratchx.org/?url=https://madfrog54321.github.io/ScratchCozmoSDK/Cozmo_Extension.js)
-
- *If a firewall window opens when running the Cozmo Controller, click Cancel*
+ *Allowing Cozmo Controller through your firewall allows for other devices to talk to the Cozmo Controller app.*
