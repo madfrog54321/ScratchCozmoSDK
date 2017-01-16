@@ -1,6 +1,25 @@
 #!/usr/bin/python3
 
+import zipfile
+import os
+import json
+from PIL import Image
+
 maxTrackSpeed = 300 # mm/s
+imagepath = 'images/'
+sprites = {}
+costumeNum = 0
+
+#clear image folder of old images
+if not os.path.exists(imagepath):
+    os.makedirs(imagepath)
+'''for the_file in os.listdir(imagepath):
+    file_path = os.path.join(imagepath, the_file)
+    try:
+        if os.path.isfile(file_path):
+            os.unlink(file_path)
+    except Exception as e:
+        print(e)'''
 
 def speak(cozmo, robot, data):
     return [], True, robot.say_text(data[0], in_parallel=True)
@@ -138,8 +157,61 @@ def setVolume(cozmo, robot, data):
     robot.set_robot_volume(float(data[0]))
     return [], True, False
 
+def loadSprite(cozmo, robot, data):
+    global sprites
+    zf = zipfile.ZipFile(data[0], 'r')
+    sprite = None
+    for name in zf.namelist():
+        if name.endswith('.json'):
+            sprite = json.loads(zf.read(name))
+    spriteName = sprite['objName'];
+    for name in zf.namelist():
+        if name.endswith('.png'):
+            file_ = open(imagepath + spriteName + name, 'wb')
+            file_.write(zf.read(name))
+            file_.close()
+    #print(sprite['costumes'])
+    sprites[spriteName] = []
+    for costume in sprite['costumes']:
+        sprites[spriteName + '_' + costume['costumeName']] = imagepath + spriteName + str(costume['baseLayerID']) + '.png'
+        sprites[spriteName].append(imagepath + spriteName + str(costume['baseLayerID']) + '.png')
+        #print('Name: ' + costume['costumeName'])
+        #print('File Path: ' + imagepath + spriteName + str(costume['baseLayerID']) + '.png')
+    return [], True, False
+
+def stepCostume(cozmo, robot, data):
+    global sprites, costumeNum
+    length = len(sprites[data[0]])
+    if costumeNum >= length:
+        costumeNum = 0
+    image = Image.open(sprites[data[0]][costumeNum])
+    costumeNum += 1
+    image = pure_pil_alpha_to_color_v2(image, color=((255, 255, 255) if data[3] == 'true' else (0, 0, 0)))
+    resized_image = image.resize(cozmo.oled_face.dimensions(), Image.NEAREST)
+    face_image = cozmo.oled_face.convert_image_to_screen_data(resized_image, invert_image=(data[2] == 'true'), pixel_threshold=int(data[1]))
+    return [], True, robot.display_oled_face_image(face_image, 5000.0, in_parallel=True)
+
+def showCostume(cozmo, robot, data):
+    global sprites
+    image = Image.open(sprites[data[1] + '_' + data[0]])
+    image = pure_pil_alpha_to_color_v2(image, color=((255, 255, 255) if data[4] == 'true' else (0, 0, 0)))
+    resized_image = image.resize(cozmo.oled_face.dimensions(), Image.NEAREST)
+    face_image = cozmo.oled_face.convert_image_to_screen_data(resized_image, invert_image=(data[3] == 'true'), pixel_threshold=int(data[2]))
+    return [], True, robot.display_oled_face_image(face_image, 5000.0, in_parallel=True)
+
+def stopSprite(cozmo, robot, data):
+    global costumeNum
+    costumeNum = 0
+    image = Image.new('RGB', cozmo.oled_face.dimensions(), (0, 0, 0))
+    face_image = cozmo.oled_face.convert_image_to_screen_data(image)
+    return [], True, robot.display_oled_face_image(face_image, 100.0, in_parallel=True)
 
 
+def pure_pil_alpha_to_color_v2(image, color=(255, 255, 255)):
+    image.load()  # needed for split()
+    background = Image.new('RGB', image.size, color)
+    background.paste(image, mask=image.split()[3])  # 3 is the alpha channel
+    return background
 
 def getCube(cozmo, robot, num):
     if num == 1:

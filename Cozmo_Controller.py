@@ -55,9 +55,11 @@ def handleCommand(message):
 
 def handleCamera():
     global robot
-    fobj = io.BytesIO()
-    robot.world.latest_image.raw_image.save(fobj, format="jpeg")
-    return fobj.getvalue()
+    if not robot == 0 and not robot.world.latest_image == None:
+        fobj = io.BytesIO()
+        robot.world.latest_image.raw_image.save(fobj, format="jpeg")
+        return fobj.getvalue()
+    return None
 
 def on_cubeTapped(evt, *, obj, tap_count, **kwargs):
     cube = 0
@@ -156,35 +158,43 @@ def runCommand(robot, command):
             global maxFailedTime
             maxFailedTime = int(round(float(command.data[0])))
         elif command.name == 'speak':
-            data, completed, action = commands.speak(cozmo, robot, command.data);
+            data, completed, action = commands.speak(cozmo, robot, command.data)
         elif command.name == 'playEmotion':
-            data, completed, action = commands.playEmotion(cozmo, robot, command.data);
+            data, completed, action = commands.playEmotion(cozmo, robot, command.data)
         elif command.name == 'playAnimation':
-            data, completed, action = commands.playAnimation(cozmo, robot, command.data);
+            data, completed, action = commands.playAnimation(cozmo, robot, command.data)
         elif command.name == 'moveDistance':
-            data, completed, action = commands.moveDistance(cozmo, robot, command.data);
+            data, completed, action = commands.moveDistance(cozmo, robot, command.data)
         elif command.name == 'turnAngle':
-            data, completed, action = commands.turnAngle(cozmo, robot, command.data);
+            data, completed, action = commands.turnAngle(cozmo, robot, command.data)
         elif command.name == 'drive':
-            data, completed, action = commands.drive(cozmo, robot, command.data);
+            data, completed, action = commands.drive(cozmo, robot, command.data)
         elif command.name == 'stopDriving':
-            data, completed, action = commands.stopDriving(cozmo, robot, command.data);
+            data, completed, action = commands.stopDriving(cozmo, robot, command.data)
         elif command.name == 'tiltHead':
-            data, completed, action = commands.tiltHead(cozmo, robot, command.data);
+            data, completed, action = commands.tiltHead(cozmo, robot, command.data)
         elif command.name == 'liftArm':
-            data, completed, action = commands.liftArm(cozmo, robot, command.data);
+            data, completed, action = commands.liftArm(cozmo, robot, command.data)
         elif command.name == 'colorLight':
-            data, completed, action = commands.colorLight(cozmo, robot, command.data);
+            data, completed, action = commands.colorLight(cozmo, robot, command.data)
         elif command.name == 'pickedUp':
-            data, completed, action = commands.pickedUp(cozmo, robot, command.data);
+            data, completed, action = commands.pickedUp(cozmo, robot, command.data)
         elif command.name == 'stackCube':
-            data, completed, action = commands.stackCube(cozmo, robot, command.data);
+            data, completed, action = commands.stackCube(cozmo, robot, command.data)
         elif command.name == 'Estop':
-            data, completed, action = commands.Estop(cozmo, robot, command.data);
+            data, completed, action = commands.Estop(cozmo, robot, command.data)
         elif command.name == 'freewill':
-            data, completed, action = commands.freewill(cozmo, robot, command.data);
+            data, completed, action = commands.freewill(cozmo, robot, command.data)
         elif command.name == 'setVolume':
-            data, completed, action = commands.setVolume(cozmo, robot, command.data);
+            data, completed, action = commands.setVolume(cozmo, robot, command.data)
+        elif command.name == 'loadSprite':
+            data, completed, action = commands.loadSprite(cozmo, robot, command.data)
+        elif command.name == 'showCostume':
+            data, completed, action = commands.showCostume(cozmo, robot, command.data)
+        elif command.name == 'stepCostume':
+            data, completed, action = commands.stepCostume(cozmo, robot, command.data)
+        elif command.name == 'stopSprite':
+            data, completed, action = commands.stopSprite(cozmo, robot, command.data)
         else:
             print('[Robot] Unkown command: ' + command.raw)
 

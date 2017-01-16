@@ -5,6 +5,8 @@ import json
 filepath = "C:\\Users\\konno\\Documents\\GitKraken\\ScratchCozmoSDK\\demo.sprite2"
 imagepath = 'images/'
 
+if not os.path.exists(imagepath):
+    os.makedirs(imagepath)
 for the_file in os.listdir(imagepath):
     file_path = os.path.join(imagepath, the_file)
     try:
@@ -13,8 +15,7 @@ for the_file in os.listdir(imagepath):
     except Exception as e:
         print(e)
 
-if not os.path.exists(imagepath):
-    os.makedirs(imagepath)
+
 zf = zipfile.ZipFile(filepath, 'r')
 sprite = None
 for name in zf.namelist():

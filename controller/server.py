@@ -75,8 +75,13 @@ class Server:
             argument = self.get_argument("image",  default=None)
             if not argument == None:
                 global cameraHandler
-                self.write(cameraHandler())
-                self.set_header("Content-type",  "image/png")
+                image = cameraHandler()
+                if image == None:
+                    self.clear()
+                    self.set_status(204)
+                else:
+                    self.write(image)
+                    self.set_header("Content-type",  "image/png")
             else:
                 self.write(loader.load("Web App/stream/index.html").generate())
 

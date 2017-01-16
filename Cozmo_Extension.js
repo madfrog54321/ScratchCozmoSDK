@@ -17,7 +17,7 @@
   };
   var status = {
     wasTappedTimeout: null,
-    wastapped: [false, false, false],
+    wasTapped: [false, false, false],
     tapped: [false, false, false],
     canSee: {
       cube: [false, false, false],
@@ -42,6 +42,9 @@
     waitForFinish: true,
     spriteAnimation: 0,
     animationDelay: 0,
+    invertColors: false,
+    setTransparency: false,
+    driveLast: new Date(),
     animationTimeout: null,
     threshold: 100,
     driveTime: 0,
@@ -72,30 +75,34 @@
   };
 
   ext.block_turnAngle = function(direction, angle, callback){
-    sendCommand(callback, "turnAngle", angle * (direction === "Left" ? -1 : 1));
+    sendCommand(callback, "turnAngle", angle * (direction === "Left" ? 1 : -1));
   };
 
   ext.block_drive = function(direction){
-    var left = 1
-    var right = 1
-    if(direction == "Backward"){
-      left = -1;
-      right = -1;
-    } else if(direction == "Left"){
-      left = 0.5;
-      right = 1;
-    } else if(direction == "Right"){
-      left = 1;
-      right = 0.5;
-    } else if(direction == "Sharp Left"){
-      left = -1;
-      right = 1;
-    } else if(direction == "Sharp Right"){
-      left = 1;
-      right = -1;
+    var now = new Date();
+    var delta = now - status.driveLast;
+    if(delta > 50){
+      var left = 1
+      var right = 1
+      if(direction == "Backward"){
+        left = -1;
+        right = -1;
+      } else if(direction == "Left"){
+        left = 0.5;
+        right = 1;
+      } else if(direction == "Right"){
+        left = 1;
+        right = 0.5;
+      } else if(direction == "Sharp Left"){
+        left = -1;
+        right = 1;
+      } else if(direction == "Sharp Right"){
+        left = 1;
+        right = -1;
+      }
+      sendCommand(null, "drive", left * status.speed, right * status.speed, 1000.0)
+      stopDrivingAfterTime();
     }
-    sendCommand(null, "drive", left * status.speed, right * status.speed, 1000.0)
-    stopDrivingAfterTime();
   };
 
   ext.block_stopDriving = function(){
@@ -126,6 +133,7 @@
     for(var i = 0; i < status.tapped.length; i++){
       if(status.tapped[i] && (num === i + 1 || num === 0)){
         resetTapped(i);
+        tapped = true;
       }
     }
     return tapped;
@@ -136,21 +144,21 @@
       if(status.state.inHand.current === true && status.state.inHand.last === false){
         resetState(status.state.inHand);
         return true;
-      } else if(status.state.inHand.current === true && status.state.inHand.last === false){
+      } else if(status.state.inHand.current === false && status.state.inHand.last === true){
         status.state.inHand.last = false;
       }
     }else if(place === "Placed On Tracks"){
       if(status.state.onTracks.current === true && status.state.onTracks.last === false){
         resetState(status.state.onTracks);
         return true;
-      } else if(status.state.onTracks.current === true && status.state.onTracks.last === false){
+      } else if(status.state.onTracks.current === false && status.state.onTracks.last === true){
         status.state.onTracks.last = false;
       }
     }else if(place === "Rolled On Side"){
       if(status.state.onSide.current === true && status.state.onSide.last === false){
         resetState(status.state.onSide);
         return true;
-      } else if(status.state.onSide.current === true && status.state.onSide.last === false){
+      } else if(status.state.onSide.current === false && status.state.onSide.last === true){
         status.state.onSide.last = false;
       }
     }
@@ -184,20 +192,22 @@
   };
 
   ext.block_canSee = function(object){
-    if(object === "face"){
+    if(object === "Face"){
       return status.canSee.face;
-    }else if(object === "pet"){
+    }else if(object === "Pet"){
       return status.canSee.pet;
-    }else if(object === "charger"){
+    }else if(object === "Charger"){
       return status.canSee.charger;
-    }else if(object[:6] === "cube #"){
-      return status.canSee.cube[int(object[7]) - 1];
+    }else if(object === "Any Cube"){
+      return status.canSee.cube[0] || status.canSee.cube[1] || status.canSee.cube[2];
+    }else if(object.slice(0, 6) === "Cube #"){
+      return status.canSee.cube[parseInt(object.slice(6, 7)) - 1];
     }
     return false;
   };
 
   ext.block_wasTapped = function(cube){
-    return status.wasTapped[getCubeNumber(cube)];
+    return status.wasTapped[getCubeNumber(cube) - 1];
   };
 
   ext.block_isDirection = function(object, direction){
@@ -205,8 +215,8 @@
       return isDirection(status.direction.cube[0], direction) ||
              isDirection(status.direction.cube[1], direction) ||
              isDirection(status.direction.cube[2], direction);
-    }else if(object[:6] === "Cube #1"){
-      return isDirection(status.direction.cube[int(object[7]) - 1], direction);
+    }else if(object.slice(0, 6) === "Cube #"){
+      return isDirection(status.direction.cube[int(object[6]) - 1], direction);
     }else if(object === "Face"){
       return isDirection(status.direction.face, direction);
     }else if(object === "Pet"){
@@ -239,7 +249,7 @@
       rawVolume = 1;
     else if(volume === "Low")
       rawVolume = 0.33;
-    else
+    else if(volume === "Nothing")
       rawVolume = 0;
     sendCommand(null, "setVolume", rawVolume);
   };
@@ -253,21 +263,25 @@
   };
 
   ext.block_showCostume = function(costume, sprite){
-    sendCommand(null, "showCostume", costume, sprite, status.threshold);
+    sendCommand(null, "showCostume", costume, sprite, Math.abs(status.threshold), status.invertColors, status.setTransparency);
   };
 
   ext.block_animateSprite = function(sprite, fps){
     status.animationDelay = (1.0 / fps) * 1000;
-    if(animationTimeout != null){
-      clearTimeout(animationTimeout);
+    if(status.animationTimeout != null){
+      clearInterval(status.animationTimeout);
     }
+    status.animationTimeout = setInterval(function(){
+      animate(sprite);
+    }, status.animationDelay);
     animate(sprite);
   };
 
   ext.block_stopSprite = function(){
-    if(animationTimeout != null){
-      clearTimeout(animationTimeout);
+    if(status.animationTimeout != null){
+      clearTimeout(status.animationTimeout);
     }
+    status.animationTimeout = null;
     sendCommand(null, "stopSprite");
   };
 
@@ -275,15 +289,20 @@
     status.threshold = threshold;
   };
 
+  ext.block_invertColors = function(state){
+    status.invertColors = (state === "Invert");
+  };
+
+  ext.block_setTransparency = function(color){
+    status.setTransparency = (color === "White");
+  };
+
   //=============================================================
   //                        Helper Methods
 
   var animate = function(sprite){
-    animationTimeout = setTimeout(function(){
-      sendCommand(null, "stepCostume", sprite, status.threshold);
-      animate();
-    }, status.animationDelay);
-  };
+    sendCommand(null, "stepCostume", sprite, Math.abs(status.threshold), status.invertColors, status.setTransparency);
+  }
 
   var isDirection = function(direction, test){
     var testDirection = 0;
@@ -299,7 +318,7 @@
 
   var resetState = function(state){
     setTimeout(function(){
-      state.current = false
+      state.last = true;
     }, 10);
   };
 
@@ -310,7 +329,7 @@
         clearTimeout(drivingTimeout);
       }
       drivingTimeout = setTimeout(function() {
-        ext.stopDriving();
+        ext.block_stopDriving();
       }, (status.driveTime === 1 ? 100 : 1000));
     }
   };
@@ -333,7 +352,7 @@
     }, 10);
   };
 
-  var getHexFromColor(color){
+  var getHexFromColor = function(color){
     if(color === "White")
       return "#ffffff";
     else if (color === "Red")
@@ -361,7 +380,7 @@
       //console.log(arguments);
       var data = Array.prototype.splice.call(arguments, 2);
       var message = command + "," + connection.id + "," + messageID + ",";
-      message += data.join();
+      message += data.join().toLowerCase();
       //console.log("Sending Command: " + message);
       connection.socket.send(message);
       if(status.waitForFinish){
@@ -402,7 +421,7 @@
           connection.id = command[1];
         }if(name === "cozmo"){
           connection.connected.robot = (command[1] === "connected");
-        } else if(name === "finished" && command[2] == client_id){
+        } else if(name === "finished" && command[2] == connection.id){
           callback = connection.pendingCommands[command[3]];
           delete connection.pendingCommands[command[3]];
           if(callback != null){
@@ -425,19 +444,18 @@
           status.direction.cube[2] = parseInt(command[14]);
         } else if(name === "tapped"){
           status.tapped[parseInt(command[1]) - 1] = true;
-          status.wastapped[parseInt(command[1]) - 1] = true;
+
+          status.wasTapped[parseInt(command[1]) - 1] = true;
           if(status.wasTappedTimeout != null){
             clearTimeout(status.wasTappedTimeout);
           }
           status.wasTappedTimeout = setTimeout(function() {
-            status.wastapped[parseInt(command[1]) - 1] = false;
+            status.wasTapped[parseInt(command[1]) - 1] = false;
           }, 1000);
         }
       };
     }
   };
-
-  connectToController();
 
   //=============================================================
   //                          Extension
@@ -452,9 +470,9 @@
   ext._getStatus = function() {
     if(!connection.supported){
       return {status: 0, msg: "Your browser is not supported"}
-    }else if(!status.connected.controller)
+    }else if(!connection.connected.controller)
       return {status: 0, msg: "Missing Cozmo Controller app"}
-    else if(!status.connected.robot)
+    else if(!connection.connected.robot)
       return {status: 1, msg: "No Cozmo connected"}
     else
       return {status: 2, msg: "Ready"};
@@ -479,7 +497,7 @@
           ["s"],
           ["h", "When %m.cubes is tapped", "block_whenTapped", "Any Cube"],
           ["h", "When Cozmo is %m.places", "block_whenPlace", "Picked Up"],
-          ["h", "When a cliff is found", "block_whenCliff"],
+          //["h", "When a cliff is found", "block_whenCliff"],
           ["s"],
           ["w", "Pickup %m.cube", "block_pickedUp", "Cube #1"], //add any cube to list
           ["w", "Place held cube on %m.cube", "block_stackCube", "Cube #2"],
@@ -487,21 +505,23 @@
           [" ", "%m.states Cozmo's free will", "block_freewill", "Enable"],
           ["s"],
           ["b", "Cozmo can see %m.objects?", "block_canSee", "Any Cube"],
-          ["b", "%m.cube was tapped?", "block_wasTapped", "Cube #1"],
-          ["b", "%m.objects is %m.cubeDirection of Cozmo?", "block_isDirection", "Face"],
+          ["b", "%m.cube was tapped recently?", "block_wasTapped", "Cube #1"],
+          ["b", "%m.objects is %m.cubeDirection of Cozmo?", "block_isDirection", "Face", "Left"],
           ["b", "Cozmo's battery is low?", "block_voltage"],
           ["s"],
           [" ", "Set driving time to %m.time", "block_setTime", "Short"],
           [" ", "%m.motion waiting for actions to finish", "block_stopWaiting", "Stop"],
           [" ", "Set Cozmo's volume to %m.volume", "block_setVolume", "Medium"],
-          ["s"],
-          [" ", "Open camera viewer", "block_openStream"],
+          //["s"],
+          //[" ", "Open camera viewer", "block_openStream"],
           ["s"],
           [" ", "Load sprite from file %s", "block_loadSprite", "demo.sprite2"],
           [" ", "Show costume %s of sprite %s", "block_showCostume", "walking", "scratch"],
           [" ", "Animate sprite %s at %n fps", "block_animateSprite", "scratch", "1"],
           [" ", "Reset Cozmo's face", "block_stopSprite"],
           [" ", "Set display threshold to %n", "block_setThreshold", "100"],
+          [" ", "%m.invert colors", "block_invertColors", "Invert"],
+          [" ", "Show transparency as %m.transparency", "block_setTransparency", "White"],
       ],
       menus: {
         colors: ["Off", "White", "Red", "Orange","Yellow", "Green", "Blue", "Purple"],
@@ -519,6 +539,8 @@
         time: ["Short", "Long", "Forever"],
         places: ["Placed On Tracks", "Rolled On Side", "Picked Up"],
         cubeDirection: ["Left", "In Front", "Right"],
+        transparency: ["Black", "White"],
+        invert: ["Invert", "Reset"],
         emotions: ["Upset", "Pleased", "Happy", "Amazed", "Angry", "Bored", "Startled"],
         animations: ["Greeting", "Sneeze", "What?", "Win", "Lose", "Facepalm", "Beeping", "New Object", "Lost Somthing", "Reject", "Failed", "Excited Greeting", "Talkative Greeting"]
       }
@@ -528,6 +550,7 @@
   ScratchExtensions.register("Cozmo", descriptor, ext);
 
 
+  connectToController();
 
 
 })({});

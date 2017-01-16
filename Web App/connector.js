@@ -68,9 +68,9 @@ var startSocket = function(){
       }
     }
     if(robot){
-      goRed();
-    }else if(!robot){
       goGreen();
+    }else if(!robot){
+      goRed();
     }else {
       goBlack();
     }
