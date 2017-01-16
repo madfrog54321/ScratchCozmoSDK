@@ -1,174 +1,126 @@
 #!/usr/bin/python3
 
 from controller import server
+from controller import commands
 import sys
-import cozmo
-from cozmo.util import degrees, distance_mm, speed_mmps
+try:
+    import cozmo
+    from cozmo.util import degrees, distance_mm, speed_mmps
+except ImportError:
+    sys.exit("Cannot import Cozmo: Do `pip3 install --user cozmo[camera]` to install")
 import threading
 import time
+import queue
+from functools import partial
+import math
+import io
 
+updateCount = 0
+failedCount = 0
 commander = 0
+robot = 0
 shutdown = False
-robot = False
-currentAction = 0
-currentActionType = '-';
+commandQueue = queue.Queue()
+pendingCommand = False
+maxTrackSpeed = 300 # mm/s
 
-'''cozmo's leds flicker if their brightness value is less than 120'''
-def fixColor(color):
-    return color
-    if color <= 60:
-        return 0
-    elif color <= 120:
-        return 120
-    else:
-        return color
+commandSpeed = 20 # commands per second
+statusSpeed = 2 # status updates per seccond
+maxFailedTime = 10 # max time before moving to the next command
 
-def actionDone(self, action, failure_code, failure_reason, state):
-    global currentAction
-    global currentActionType
-    global commander
-    currentAction = 0
-    commander.sendToClient('done,' + currentActionType + ',-')
+def getLoopDelay():
+    return 1 / commandSpeed
 
-def handleCommand(command):
-    global currentAction
-    global currentActionType
-    global robot
-    print(command)
-    # --- split command into individual values ---
-    message = command.split(',')
-    name = message[0]
-    data1 = message[1]
-    data2 = message[2]
-    data3 = message[3]
-    wait = message[4] == 'wait'
-    action = 0
-    try:
-        # have cozmo say the text in data1
-        # speak,[text to say],-,-,[wait, continue]
-        # speak,hello world,-,-,wait
-        if name == 'speak' and robot:
-            action = robot.say_text(data1)
+def getStatusCount():
+    return commandSpeed / statusSpeed
 
-        # set the 3 main backpack lights to the hex color given
-        # backlight,[hex color],-,-,continue
-        # backlight,#FF0000,-,-,continue
-        elif name == 'backlight' and robot:
-            if data1 == 'off':
-                robot.set_backpack_lights_off()
-            else:
-                colorHex = data1.lstrip('#')
-                rgb = tuple(fixColor(int(colorHex[i:i+2], 16)) for i in (0, 2 ,4))
-                color = cozmo.lights.Color(name="color", rgb=rgb)
-                light = cozmo.lights.Light(on_color=color, off_color=color)
-                off = cozmo.lights.off_light
-                robot.set_backpack_lights(off, light, light, light, off)
+def getMaxFailedCount():
+    return commandSpeed * maxFailedTime
 
-        # set the 4 leds on a light cube to the hex color given
-        # cubelight,[cube number],[hex color],-,continue
-        # cubelight,1,#FF0000,-,continue
-        elif name == 'cubeLight' and robot:
-            if data2 == 'off':
-                getCube(int(data1)).set_lights_off()
-            else:
-                colorHex = data2.lstrip('#')
-                rgb = tuple(fixColor(int(colorHex[i:i+2], 16)) for i in (0, 2 ,4))
-                color = cozmo.lights.Color(name="color", rgb=rgb)
-                getCube(int(data1)).set_lights(cozmo.lights.Light(on_color=color, off_color=color))
-
-        # tilt cozmo's head to the given angle
-        # tilt,[angle in degrees],-,-,[wait, continue]
-        # tilt,20,-,-,wait
-        elif name == 'tilt' and robot:
-            angle = degrees(float(data1))
-            if angle > cozmo.robot.MAX_HEAD_ANGLE:
-                angle = cozmo.robot.MAX_HEAD_ANGLE
-            elif angle < cozmo.robot.MIN_HEAD_ANGLE:
-                angle = cozmo.robot.MIN_HEAD_ANGLE
-            action = robot.set_head_angle(angle)
-
-        # drive forward the given distance at the given speed
-        # drive,[distance in mm],[speed in mm/s],-,[wait, continue]
-        # drive,100,50,-,wait
-        elif name == 'drive' and robot:
-            action = robot.drive_straight(distance_mm(float(data1)), speed_mmps(float(data2)))
-
-        # turn by the angle given
-        # turn,[angle to turn],-,-,[wait, continue]
-        # turn,90,-,-,wait
-        elif name == 'turn' and robot:
-            action = robot.turn_in_place(degrees(float(data1)))
-
-        # drive each wheel at set speed
-        # speed,[speed for left],[speed for right],-,[wait, continue]
-        # speed,-50,50,-,wait
-        elif name == 'speed' and robot:
-            robot.drive_wheels(float(data1), float(data2), l_wheel_acc=1000, r_wheel_acc=1000)
-
-        # stop the current action and all motors
-        # stop,-,-,-,continue
-        elif name == 'stop' and robot:
-            if not currentAction == 0:
-                currentAction.abort()
-            robot.stop_all_motors()
-
-        # set cozmo's volume
-        # volume,[volume from 0.0 to 1.0],-,-,continue
-        # volume,0.5,-,-,continue
-        elif name == 'volume' and robot:
-            robot.set_robot_volume(float(data1))
-
-        # enable cozmo's normal behaviors and reactions
-        # freewill,[enable, disable],-,-,continue
-        # freewill,enable,-,-,continue
-        elif name == 'freewill' and robot:
-            if data1 == 'enable':
-                robot.start_freeplay_behaviors()
-            else:
-                robot.stop_freeplay_behaviors()
-
-        # set cozmo's lift to a spesific height
-        # lift,[height from 0.0 to 1.0],-,-,[wait, continue]
-        # lift,0.5,-,-,wait
-        elif name == 'lift' and robot:
-            height = float(data1)
-            if height > 1:
-                height = 1
-            elif height < 0:
-                height = 0
-            action = robot.set_lift_height(height, accel=100.0, max_speed=100.0, duration=0.5)
-
-        # pickup a light cube [cozmo must know where it is]
-        # pickup,[cube number],-,-,[wait, continue]
-        # pickup,1,-,-,wait
-        elif name == 'pickup' and robot:
-            action = robot.pickup_object(getCube(int(data1)))
-
+class ParsedCommand:
+    def __init__(self, command):
+        splitCommand = command.split(',')
+        if len(splitCommand) > 0:
+            self.name = splitCommand[0];
+            self.data = splitCommand[3:];
+            self.ID = int(splitCommand[2]);
+            self.client = int(splitCommand[1]);
         else:
-            print('Unkown command: ' + command)
+            self.name = '';
+            self.data = [];
+            self.ID = 0;
+            self.client = 0;
+        self.raw = command;
 
-        # --- setup callback for action if command asked for wait ---
-        if not action == 0 and wait:
-            if not currentAction == 0:
-                currentAction.abort()
-            currentActionType = name
-            currentAction = action
-            currentAction.on_completed(actionDone)
-    except cozmo.exceptions.RobotBusy as e:
-        print('[Error] Cozmo is currently doing an action.')
+def handleCommand(message):
+    commandQueue.put(ParsedCommand(message))
+    print('[Server] Received Command: ' + message)
+
+def handleCamera():
+    global robot
+    if not robot == 0 and not robot.world.latest_image == None:
+        fobj = io.BytesIO()
+        robot.world.latest_image.raw_image.save(fobj, format="jpeg")
+        return fobj.getvalue()
+    return None
 
 def on_cubeTapped(evt, *, obj, tap_count, **kwargs):
-    cube = 'none'
-    if getCube(1) == obj:
-        cube = 'cube1';
-    elif getCube(2) == obj:
-        cube = 'cube2';
-    elif getCube(3) == obj:
-        cube = 'cube3';
-    commander.sendToClient('tapped,' + cube + ',yes')
+    cube = 0
+    for i in (1, 2, 3):
+        if getCube(i) == obj:
+            cube = i;
+    commander.sendToClient('tapped,' + str(cube))
+
+def getDirectionToCube(robot, num):
+    cube = getCube(num)
+    if not cube.pose == None and cube.pose.is_valid and cube.is_visible:
+        cubeLoc = cube.pose.position
+        cozmoLoc = robot.pose.position
+        cozmoRot = robot.pose.rotation.angle_z.radians
+        deltaX = cubeLoc.x - cozmoLoc.x
+        deltaY = cubeLoc.y - cozmoLoc.y
+        cubeDir = math.atan2(deltaY, deltaX) - cozmoRot
+        if cubeDir < -0.174533:
+            return 3
+        elif cubeDir > 0.174533:
+            return 1
+        elif cubeDir >= -0.174533 and cubeDir <= 0.174533:
+            return 2
+        else:
+            return 0
+    else:
+        return 0
+
+
+
+# status,[voltage],[onTable],[onSide],[onTracks],[seeCliff],[seeFace], ...
+# ... [seePet],[seeCube1],[seeCube2],[seeCube3],[seeCharger]
+def sendRobotStatus(robot):
+    status = ['-'] * 15
+    status[0] = 'status'
+    status[1] = robot.battery_voltage
+    status[2] = not robot.is_picked_up
+    status[3] = abs(robot.accelerometer.y) > 9000
+    status[4] = robot.is_picked_up
+    status[5] = robot.is_cliff_detected
+    status[6] = robot.world.visible_face_count() > 0
+    status[7] = robot.world.visible_pet_count() > 0
+    for obj in robot.world.visible_objects:
+        if obj == getCube(1):
+            status[8] = True
+        elif obj == getCube(2):
+            status[9] = True
+        elif obj == getCube(3):
+            status[10] = True
+        elif obj == robot.world.charger:
+            status[11] = True
+    status[12] = getDirectionToCube(robot, 1)
+    status[13] = getDirectionToCube(robot, 2)
+    status[14] = getDirectionToCube(robot, 3)
+    message = ','.join(map(str,status))
+    commander.sendToClient(message)
 
 def getCube(num):
-    global robot
     if num == 1:
         return robot.world.light_cubes[cozmo.objects.LightCube1Id]
     elif num == 2:
@@ -177,66 +129,151 @@ def getCube(num):
         return robot.world.light_cubes[cozmo.objects.LightCube3Id]
     return 0
 
-def run(sdk_conn):
-    global robot
-    global shutdown
+def buildReturnMessage(command, completed, data):
+    message = 'finished,'
+    message += command.name
+    message += ',' + str(command.client)
+    message += ',' + str(command.ID)
+    message += ',' + ('completed' if completed else 'error')
+    message += ',' + ','.join(map(str,data))
+    return message
+
+def actionCallback(command, bob, **kwargs):
+    completed = True if kwargs['state'] == cozmo.action.ACTION_SUCCEEDED else False
+    data = [] if kwargs['state'] == cozmo.action.ACTION_SUCCEEDED else [kwargs['failure_reason']]
+    message = buildReturnMessage(command, completed, data)
+    commander.sendToClient(message)
+
+def runCommand(robot, command):
+    global pendingCommand, failedCount
+    print('[Robot] Running Command: ' + command.raw)
+    data = []
+    completed = True
+    action = False
+    try:
+        if command.name == 'cmd/sec':
+            global commandSpeed
+            commandSpeed = float(command.data[0])
+        elif command.name == 'update/sec':
+            global statusSpeed
+            statusSpeed = int(round(float(command.data[0])))
+        elif command.name == 'maxFailed':
+            global maxFailedTime
+            maxFailedTime = int(round(float(command.data[0])))
+        elif command.name == 'speak':
+            data, completed, action = commands.speak(cozmo, robot, command.data)
+        elif command.name == 'playEmotion':
+            data, completed, action = commands.playEmotion(cozmo, robot, command.data)
+        elif command.name == 'playAnimation':
+            data, completed, action = commands.playAnimation(cozmo, robot, command.data)
+        elif command.name == 'moveDistance':
+            data, completed, action = commands.moveDistance(cozmo, robot, command.data)
+        elif command.name == 'turnAngle':
+            data, completed, action = commands.turnAngle(cozmo, robot, command.data)
+        elif command.name == 'drive':
+            data, completed, action = commands.drive(cozmo, robot, command.data)
+        elif command.name == 'stopDriving':
+            data, completed, action = commands.stopDriving(cozmo, robot, command.data)
+        elif command.name == 'tiltHead':
+            data, completed, action = commands.tiltHead(cozmo, robot, command.data)
+        elif command.name == 'liftArm':
+            data, completed, action = commands.liftArm(cozmo, robot, command.data)
+        elif command.name == 'colorLight':
+            data, completed, action = commands.colorLight(cozmo, robot, command.data)
+        elif command.name == 'pickedUp':
+            data, completed, action = commands.pickedUp(cozmo, robot, command.data)
+        elif command.name == 'stackCube':
+            data, completed, action = commands.stackCube(cozmo, robot, command.data)
+        elif command.name == 'Estop':
+            data, completed, action = commands.Estop(cozmo, robot, command.data)
+        elif command.name == 'freewill':
+            data, completed, action = commands.freewill(cozmo, robot, command.data)
+        elif command.name == 'setVolume':
+            data, completed, action = commands.setVolume(cozmo, robot, command.data)
+        elif command.name == 'loadSprite':
+            data, completed, action = commands.loadSprite(cozmo, robot, command.data)
+        elif command.name == 'showCostume':
+            data, completed, action = commands.showCostume(cozmo, robot, command.data)
+        elif command.name == 'stepCostume':
+            data, completed, action = commands.stepCostume(cozmo, robot, command.data)
+        elif command.name == 'stopSprite':
+            data, completed, action = commands.stopSprite(cozmo, robot, command.data)
+        else:
+            print('[Robot] Unkown command: ' + command.raw)
+
+        failedCount = 0
+        pendingCommand = False
+        if not action == False:
+            callback = partial(actionCallback, command)
+            action.add_event_handler(cozmo.action.EvtActionCompleted, callback)
+        else:
+            message = buildReturnMessage(command, completed, data)
+            commander.sendToClient(message)
+    except cozmo.exceptions.RobotBusy as e:
+        if failedCount < getMaxFailedCount():
+            print('[RobotBusy] Action failed. Will atempt again on next loop.')
+            pendingCommand = command
+            failedCount += 1
+        else:
+            print('[RobotBusy] Action Failed. Moving to next command.')
+            message = buildReturnMessage(command, False, [])
+            commander.sendToClient(message)
+            pendingCommand = False
+            failedCount = 0
+
+def cozmo_program(sdk_conn):
+    global updateCount, robot
     robot = sdk_conn.wait_for_robot()
-    robot.world.add_event_handler(cozmo.objects.EvtObjectTapped, on_cubeTapped)
-    print("Connected to {!s}".format(robot))
+    print("[Robot] Connected to Cozmo!")
+    robot.say_text('i am connected')
+    robot.camera.image_stream_enabled = True
     commander.setRobotStatus(True)
-    while not shutdown and sdk_conn.is_connected:
-        time.sleep(0.5)
-        commander.sendToClient('voltage,-,' + str(robot.battery_voltage))
-        if robot.is_picked_up:
-            commander.sendToClient('pickedUp,-,yes')
-        if robot.is_cliff_detected:
-            commander.sendToClient('cliff,-,yes')
-        if robot.is_cliff_detected:
-            commander.sendToClient('cliff,-,yes')
-        if robot.world.visible_face_count() > 0:
-            commander.sendToClient('see,face,yes')
+    robot.world.add_event_handler(cozmo.objects.EvtObjectTapped, on_cubeTapped)
+    while not shutdown and robot.conn.is_connected:
+        time.sleep(getLoopDelay())
+        try:
+            if pendingCommand == False:
+                command = commandQueue.get_nowait()
+                runCommand(robot, command)
+            else:
+                runCommand(robot, pendingCommand)
+        except queue.Empty as e:
+            pass
+        except:
+            print('[Error] Command failed. Unkown reason.')
+        if updateCount >= getStatusCount():
+            sendRobotStatus(robot)
+            updateCount = 0
         else:
-            commander.sendToClient('see,face,no')
-        if robot.world.visible_pet_count() > 0:
-            commander.sendToClient('see,pet,yes')
-        else:
-            commander.sendToClient('see,pet,no')
-        cubes = [False, False, False, False]
-        for obj in robot.world.visible_objects:
-            if obj == getCube(1):
-                cubes[0] = True
-            elif obj == getCube(2):
-                cubes[1] = True
-            elif obj == getCube(3):
-                cubes[2] = True
-            elif obj == robot.world.charger:
-                cubes[3] = True
-        commander.sendToClient('see,cube1,' + ('yes' if cubes[0] else 'no'))
-        commander.sendToClient('see,cube2,' + ('yes' if cubes[1] else 'no'))
-        commander.sendToClient('see,cube3,' + ('yes' if cubes[2] else 'no'))
-        commander.sendToClient('see,charger,' + ('yes' if cubes[3] else 'no'))
-    print('disconnect from robot')
+            updateCount += 1
+    print('[Robot] Disconnected from Cozmo')
     commander.setRobotStatus(False)
-    robot = False
 
 def startCozmo():
     global shutdown
+    cozmo.setup_basic_logging(general_log_level='CRITICAL', protocol_log_level='CRITICAL')
     while not shutdown:
         time.sleep(2)
         try:
-            cozmo.connect(run)
+            cozmo.run.connect(cozmo_program)
+        except cozmo.SDKVersionMismatch as e:
+            print('[Error] Update both Cozmo\'s app and the Cozmo SDK')
+        except cozmo.NoDevicesFound as e:
+            print('[Notice] No phone running Cozmo\'s app found. Waiting for phone...')
+        except cozmo.ConnectionAborted as e:
+            print('[Error] Cozmo was disconnected')
+        except cozmo.ConnectionCheckFailed as e:
+            print('[Error] Connection to Cozmo failed')
         except cozmo.ConnectionError as e:
-            print("Cozmo not found")
-
-def stopThreads():
-    global shutdown
-    shutdown = True;
+            print('[Error] Connection to Cozmo failed')
+        except cozmo.SDKShutdown as e:
+            print('[Error] SDK is closing')
 
 if __name__ == "__main__":
     print('=== Cozmo Controller v0.2.8 ===')
 
     threading.Thread(target=startCozmo).start()
 
-    commander = server.Server(handleCommand)
+    commander = server.Server(handleCommand, handleCamera)
     commander.start()
-    stopThreads()
+    shutdown = True;

@@ -4,9 +4,15 @@ Expand your Cozmo's abilities with this Scratch extension. With Scratch's drag-a
 
 ## Install
 
-1. Install the [Cozmo SDK](http://cozmosdk.anki.com/docs/initial.html) and setup phone/tablet
+1. Install [Python](https://www.python.org/)
 
-2. Install Tornado Web Server `$ pip3 install tornado`
+2. Install extra python libraries
+
+```
+$ pip3 install --user tornado pillow numpy cozmo[camera]
+```
+
+3. Connect Cozmo to your phone/tablet with the app
 
 4. Download [this repository](https://github.com/madfrog54321/ScratchCozmoSDK/archive/gh-pages.zip)
 

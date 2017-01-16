@@ -1,6 +1,5 @@
 var socket;
 var robot = false;
-var client = false;
 
 function stopMotors(){
   socket.send('stop,-,-,-,continue');
@@ -12,21 +11,26 @@ function setColor(back, front, text, loading, button){
   $(".cube2").css("background-color",front);
   $(".step").css("color",front);
   $(".info").css("color",front);
-  $(".step").text(text);
-  $(".spinner").css("display", (loading ? "block" : "none"));
-  $(".stopButton").css("display", (button ? "block" : "none"));
+  $(".step").html(text);
+  $(".spinner").css("display", (loading ? "" : "none"));
+  $(".stopButton").css("display", (button ? "" : "none"));
+  $(".editorList").css("display", (button ? "" : "none"));
+  $(".deviceInfo").css("display", (button ? "" : "none"));
+  //$(".cozmo").css("display", (button ? "" : "none"));
 }
 
 function goRed(){
-  setColor("#FF4136", "white", "Waiting for phone...", true, false);
+  setColor("#FF4136", "white", "Looking for Cozmo...", true, false);
 };
 
+/*
 function goYellow(){
   setColor("#FFDC00", "black", "Waiting for Scratch...", true, false);
 };
+*/
 
 function goGreen(){
-  setColor("#2ECC40", "white", "Time to program!", false, true);
+  setColor("#2ECC40", "white", "Let's program Cozmo! Choose your editor...", false, true);
 };
 
 function goBlack(){
@@ -53,31 +57,22 @@ var startSocket = function(){
   };
 
   socket.onmessage = function(event) {
+    console.log(event.data);
     var command = event.data.split(",");
-    var name = command[0], kind = command[1], status = command[2];
-    if(name === 'status'){
-      if(kind === 'robot'){
-        if(status === 'connected'){
-          robot = true;
-        }else if(status === 'waiting'){
-          robot = false;
-        }
-      } else if(kind === 'client'){
-        if(status === 'connected'){
-          client = true;
-        }else if(status === 'waiting'){
-          client = false;
-        }
+    var name = command[0];
+    if(name === 'cozmo'){
+      if(command[1] === 'connected'){
+        robot = true;
+      }else if(command[1] === 'waiting'){
+        robot = false;
       }
-      if(!robot){
-        goRed();
-      }else if(!client){
-        goYellow();
-      }else if(robot && client){
-        goGreen();
-      }else {
-        goBlack();
-      }
+    }
+    if(robot){
+      goGreen();
+    }else if(!robot){
+      goRed();
+    }else {
+      goBlack();
     }
   };
 };

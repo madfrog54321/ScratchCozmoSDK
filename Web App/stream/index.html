@@ -1,0 +1,54 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Cozmo's Camera</title>
+  <link rel="icon"
+      type="image/png"
+      href="http://image.flaticon.com/icons/png/512/1/1138.png">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+  <script>
+    $(document).ready(function()
+    {
+        $(".streamImage").on("error", function(){
+            $(".loadingImage").css("display", (true ? "" : "none"));
+            $(".streamImage").css("display", (false ? "" : "none"));
+        });
+        $(".streamImage").on("load", function(){
+            $(".loadingImage").css("display", (false ? "" : "none"));
+            $(".streamImage").css("display", (true ? "" : "none"));
+        });
+    });
+    function updateImage()
+    {
+        $(".streamImage").attr("src", "stream?image=" + (new Date()).getTime());
+    }
+    setInterval(updateImage , 100);
+  </script>
+  <style>
+    html, body{
+      margin:0px;
+      height: 100%;
+    }
+    body {
+      display: flex;
+    }
+    .streamImage{
+      object-fit: cover;
+      height:100%;
+      width:100%;
+    }
+    .loadingImage{
+      object-fit: cover;
+      height:100%;
+      width:100%;
+    }
+  </style>
+</head>
+
+<body>
+  <img class="streamImage" src="" width=300 height=300>
+  <img class="loadingImage" src="https://s-media-cache-ak0.pinimg.com/originals/cb/05/42/cb05420fec7a12bb752da11df0fb553f.gif" width=300 height=300>
+</body>
+</html>
