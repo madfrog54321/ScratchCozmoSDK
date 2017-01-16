@@ -9,7 +9,7 @@ Expand your Cozmo's abilities with this Scratch extension. With Scratch's drag-a
 2. Install extra python libraries
 
 ```
-$ pip3 install --user tornado pillow numpy cozmo[camera]
+$ pip3 install --user tornado pillow numpy cozmo[camera] netifaces
 ```
 
 3. Connect Cozmo to your phone/tablet with the app
