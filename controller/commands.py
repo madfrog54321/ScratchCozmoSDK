@@ -159,45 +159,60 @@ def setVolume(cozmo, robot, data):
 
 def loadSprite(cozmo, robot, data):
     global sprites
-    zf = zipfile.ZipFile(data[0], 'r')
-    sprite = None
-    for name in zf.namelist():
-        if name.endswith('.json'):
-            sprite = json.loads(zf.read(name))
-    spriteName = sprite['objName'];
-    for name in zf.namelist():
-        if name.endswith('.png'):
-            file_ = open(imagepath + spriteName + name, 'wb')
-            file_.write(zf.read(name))
-            file_.close()
-    #print(sprite['costumes'])
-    sprites[spriteName] = []
-    for costume in sprite['costumes']:
-        sprites[spriteName + '_' + costume['costumeName']] = imagepath + spriteName + str(costume['baseLayerID']) + '.png'
-        sprites[spriteName].append(imagepath + spriteName + str(costume['baseLayerID']) + '.png')
-        #print('Name: ' + costume['costumeName'])
-        #print('File Path: ' + imagepath + spriteName + str(costume['baseLayerID']) + '.png')
-    return [], True, False
+    if os.path.isfile(data[0]):
+        zf = zipfile.ZipFile(data[0], 'r')
+        sprite = None
+        for name in zf.namelist():
+            if name.endswith('.json'):
+                sprite = json.loads(zf.read(name))
+        spriteName = sprite['objName'];
+        for name in zf.namelist():
+            if name.endswith('.png'):
+                file_ = open(imagepath + spriteName + name, 'wb')
+                file_.write(zf.read(name))
+                file_.close()
+        #print(sprite['costumes'])
+        sprites[spriteName] = []
+        for costume in sprite['costumes']:
+            sprites[spriteName + '_' + costume['costumeName']] = imagepath + spriteName + str(costume['baseLayerID']) + '.png'
+            sprites[spriteName].append(imagepath + spriteName + str(costume['baseLayerID']) + '.png')
+            #print('Name: ' + costume['costumeName'])
+            #print('File Path: ' + imagepath + spriteName + str(costume['baseLayerID']) + '.png')
+        return [], True, False
+    else:
+        print('[Commands] Sprite Error. File does not exist.')
+        return [], False, False
 
 def stepCostume(cozmo, robot, data):
     global sprites, costumeNum
-    length = len(sprites[data[0]])
-    if costumeNum >= length:
-        costumeNum = 0
-    image = Image.open(sprites[data[0]][costumeNum])
-    costumeNum += 1
-    image = pure_pil_alpha_to_color_v2(image, color=((255, 255, 255) if data[3] == 'true' else (0, 0, 0)))
-    resized_image = image.resize(cozmo.oled_face.dimensions(), Image.NEAREST)
-    face_image = cozmo.oled_face.convert_image_to_screen_data(resized_image, invert_image=(data[2] == 'true'), pixel_threshold=int(data[1]))
-    return [], True, robot.display_oled_face_image(face_image, 5000.0, in_parallel=True)
+    if data[0] in sprites:
+        length = len(sprites[data[0]])
+        if costumeNum >= length:
+            costumeNum = 0
+        image = Image.open(sprites[data[0]][costumeNum])
+        costumeNum += 1
+        image = pure_pil_alpha_to_color_v2(image, color=((255, 255, 255) if data[3] == 'true' else (0, 0, 0)))
+        resized_image = image.resize(cozmo.oled_face.dimensions(), Image.NEAREST)
+        face_image = cozmo.oled_face.convert_image_to_screen_data(resized_image, invert_image=(data[2] == 'true'), pixel_threshold=int(data[1]))
+        return [], True, robot.display_oled_face_image(face_image, 5000.0, in_parallel=True)
+    else:
+        print('[Commands] Sprite Error. Sprite not loaded. [' + data[0] + ']')
+        return [], False, False
 
 def showCostume(cozmo, robot, data):
     global sprites
-    image = Image.open(sprites[data[1] + '_' + data[0]])
-    image = pure_pil_alpha_to_color_v2(image, color=((255, 255, 255) if data[4] == 'true' else (0, 0, 0)))
-    resized_image = image.resize(cozmo.oled_face.dimensions(), Image.NEAREST)
-    face_image = cozmo.oled_face.convert_image_to_screen_data(resized_image, invert_image=(data[3] == 'true'), pixel_threshold=int(data[2]))
-    return [], True, robot.display_oled_face_image(face_image, 5000.0, in_parallel=True)
+    if (data[1] + '_' + data[0]) in sprites:
+        image = Image.open(sprites[data[1] + '_' + data[0]])
+        image = pure_pil_alpha_to_color_v2(image, color=((255, 255, 255) if data[4] == 'true' else (0, 0, 0)))
+        resized_image = image.resize(cozmo.oled_face.dimensions(), Image.NEAREST)
+        face_image = cozmo.oled_face.convert_image_to_screen_data(resized_image, invert_image=(data[3] == 'true'), pixel_threshold=int(data[2]))
+        return [], True, robot.display_oled_face_image(face_image, 5000.0, in_parallel=True)
+    elif not data[1] in sprites:
+        print('[Commands] Sprite Error. Sprite not loaded. [' + data[1] + ']')
+        return [], False, False
+    else:
+        print('[Commands] Sprite Error. Sprite does not have costume. [' + data[0] + ']')
+        return [], False, False
 
 def stopSprite(cozmo, robot, data):
     global costumeNum

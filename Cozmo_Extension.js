@@ -207,7 +207,11 @@
   };
 
   ext.block_wasTapped = function(cube){
-    return status.wasTapped[getCubeNumber(cube) - 1];
+    if(cube === "Any Cube"){
+      return status.wasTapped[0] || status.wasTapped[1] || status.wasTapped[2];
+    }else{
+      return status.wasTapped[getCubeNumber(cube) - 1];
+    }
   };
 
   ext.block_isDirection = function(object, direction){
@@ -407,7 +411,7 @@
       };
 
       connection.socket.onclose = function(event){
-        connection.connected.connected = false;
+        connection.connected.controller = false;
         connection.socket = null;
         if(!status.shutdown)
           setTimeout(connectToController, 2000);
@@ -442,6 +446,9 @@
           status.direction.cube[0] = parseInt(command[12]);
           status.direction.cube[1] = parseInt(command[13]);
           status.direction.cube[2] = parseInt(command[14]);
+          status.direction.face = parseInt(command[15]);
+          status.direction.pet = parseInt(command[16]);
+          status.direction.charger = parseInt(command[17]);
         } else if(name === "tapped"){
           status.tapped[parseInt(command[1]) - 1] = true;
 
@@ -505,8 +512,8 @@
           [" ", "%m.states Cozmo's free will", "block_freewill", "Enable"],
           ["s"],
           ["b", "Cozmo can see %m.objects?", "block_canSee", "Any Cube"],
-          ["b", "%m.cube was tapped recently?", "block_wasTapped", "Cube #1"],
-          ["b", "%m.objects is %m.cubeDirection of Cozmo?", "block_isDirection", "Face", "Left"],
+          ["b", "%m.cube is %m.cubeDirection of Cozmo?", "block_isDirection", "Cubde #1", "Left"],
+          ["b", "%m.cubes was tapped recently?", "block_wasTapped", "Cube #1"],
           ["b", "Cozmo's battery is low?", "block_voltage"],
           ["s"],
           [" ", "Set driving time to %m.time", "block_setTime", "Short"],
