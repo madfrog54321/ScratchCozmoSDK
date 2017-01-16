@@ -3,8 +3,11 @@
 from controller import server
 from controller import commands
 import sys
-import cozmo
-from cozmo.util import degrees, distance_mm, speed_mmps
+try:
+    import cozmo
+    from cozmo.util import degrees, distance_mm, speed_mmps
+except ImportError:
+    sys.exit("Cannot import Cozmo: Do `pip3 install --user cozmo[camera]` to install")
 import threading
 import time
 import queue

@@ -3,7 +3,11 @@
 import zipfile
 import os
 import json
-from PIL import Image
+
+try:
+    from PIL import Image
+except ImportError:
+    sys.exit("Cannot import from PIL: Do `pip3 install --user pillow` to install")
 
 maxTrackSpeed = 300 # mm/s
 imagepath = 'images/'

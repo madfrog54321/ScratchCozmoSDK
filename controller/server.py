@@ -1,9 +1,13 @@
 #!/usr/bin/python3
 
-import tornado.ioloop
-import tornado.web
-import tornado.websocket
-import tornado.template
+try:
+    import tornado.ioloop
+    import tornado.web
+    import tornado.websocket
+    import tornado.template
+except ImportError:
+    sys.exit("Cannot import Tornado: Do `pip3 install --user tornado` to install")
+
 import webbrowser
 import os
 import socket
