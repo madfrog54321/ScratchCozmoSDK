@@ -21,7 +21,7 @@ He is aware of his environment, and can interact with it. So lets get playing ..
 
 6. Run the Cozmo Controller app:
     ```
-    python3 Cozmo_Controller.py
+    $ python3 Cozmo_Controller.py
     ```
 7. Plug your phone/tablet into your computer
 
@@ -30,7 +30,7 @@ He is aware of his environment, and can interact with it. So lets get playing ..
 #### Want to control Cozmo over the internet?
 Provide your external hostname/ip-address to Cozmo Controller app:
 ```
-python3 Cozmo_Controller.py <your_external_hostname/ip-address>
+$ python3 Cozmo_Controller.py <your_external_hostname/ip-address>
 ```
 
 ## Developers
