@@ -11,7 +11,7 @@ He is aware of his environment, and can interact with it. So lets get playing ..
 
 2. Install extra Python libraries
     ```
-    $ pip3 install --user tornado pillow numpy cozmo[camera] netifaces
+    $ pip3 install --user tornado pillow numpy cozmo[camera]
     ```
 3. Connect Cozmo to your phone/tablet with the Cozmo app
 
