@@ -23,18 +23,18 @@
         <div class="cube2"></div>
       </div>
       <div class="editorList">
-        <a href="http://scratchx.org/?url=https://madfrog54321.github.io/ScratchCozmoSDK/Cozmo_Extension.js" target="_blank"><div>
+        <a href="http://scratchx.org/?url=http://{{ host }}:9090/Cozmo_Extension.js" target="_blank"><div>
           <h4>ScratchX</h4>
           <img class="editorImage" src="image/scratch.png"/>
           <p></p>
         </div></a>
-        <a href="http://localhost:9090/blockly" target="_blank"><div><!--style="pointer-events: none; cursor: default;"-->
+        <a href="http://{{ host }}:9090/blockly" target="_blank"><div><!--style="pointer-events: none; cursor: default;"-->
           <h4>Blockly</h4>
           <h5>Coming Soon</h5>
           <img class="editorImage" src="image/blockly.png" style="filter: grayscale(1);"/>
           <!--<p class="info">Use ScratchX to create sprite files for face animations.</p>-->
         </div></a>
-        <a href="http://localhost:9090/stream" target="_blank"><div><!--style="pointer-events: none; cursor: default;"-->
+        <a href="http://{{ host }}:9090/stream" target="_blank"><div><!--style="pointer-events: none; cursor: default;"-->
           <h4>Cozmo's Camera</h4>
           <img class="editorImage" src="http://image.flaticon.com/icons/png/512/1/1138.png" style="max-width:150px; max-height: 150px;"/>
           <!--<p class="info">Use ScratchX to create sprite files for face animations.</p>-->
@@ -42,8 +42,8 @@
       </div>
       <p class="deviceInfo">For a runaway Cozmo</p>
       <button class="stopButton" onclick="stopMotors();">Freeze Cozmo in Place</button>
-      <!--<p class="deviceInfo">Your IP is: {{ ipAddress }}</p>-->
-      <p class="deviceInfo">Go to <a href="http://{{ ipAddress }}:9090/stream" target="_blank">http://{{ ipAddress }}:9090/stream</a> on another device to see what Cozmo sees</p>
+      <!--<p class="deviceInfo">Your IP is: {{ host }}</p>-->
+      <p class="deviceInfo">Go to <a href="http://{{ host }}:9090/stream" target="_blank">http://{{ host }}:9090/stream</a> on another device to see what Cozmo sees</p>
     </div>
   </div>
 </body>

@@ -403,7 +403,7 @@
       connection.supported = true;
     }
     if(!status.shutdown && connection.supported){
-      connection.socket = new WebSocket("ws://localhost:9090/ws");
+      connection.socket = new WebSocket("ws://{{ host }}:9090/ws");
 
       connection.socket.onopen = function(event){
         connection.connected.controller = true;
