@@ -67,7 +67,7 @@
   };
 
   ext.block_setSpeed = function(speed){
-    status.speed = float(speed) * MM_to_CM;
+    status.speed = parseFloat(speed) * MM_to_CM;
   };
 
   ext.block_moveDistance = function(distance, direction, callback){
