@@ -25,7 +25,7 @@ He is aware of his environment, and can interact with it. So lets get playing ..
     ```
 7. Plug your phone/tablet into your computer
 
-*Allowing Cozmo Controller through your firewall allows for other devices to talk to the Cozmo Controller app.*
+*Allowing Python through your firewall allows for other devices to talk to the Cozmo Controller app.*
 
 #### Want to control Cozmo over the internet?
 Provide your external hostname/ip-address to Cozmo Controller app:
