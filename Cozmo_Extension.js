@@ -81,7 +81,7 @@
   ext.block_drive = function(direction){
     var now = new Date();
     var delta = now - status.driveLast;
-    if(delta > 50){
+    if(delta > 10){
       var left = 1
       var right = 1
       if(direction == "Backward"){
