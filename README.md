@@ -3,13 +3,13 @@
 Get kids involved with programming and robotics. Using Scratch's drag-and-drop editor, programming Cozmo is now as easy as snapping blocks together.
 Give kids the ability to use programming to interact with the real world. Learning programming on websites is educational, but boring.
 Kids need something tangible to play with, and fully appreciate. Cozmo brings programming into the real world.
-He is aware of his environment, and can interact with it. Lets get playing (...I mean programming).
+He is aware of his environment, and can interact with it. So lets get playing ... I mean programming.
 
 ## Install
 
 1. Follow the [install guide](http://cozmosdk.anki.com/docs/initial.html) for the Cozmo SDK
 
-2. Install extra python libraries
+2. Install extra Python libraries
 
 ```
 $ pip3 install --user tornado pillow numpy cozmo[camera] netifaces
