@@ -8,11 +8,6 @@ try:
 except ImportError:
     sys.exit("Cannot import Tornado: Do `pip3 install --user tornado` to install")
 
-try:
-    import netifaces
-except ImportError:
-    sys.exit("Cannot import netifaces: Do `pip3 install --user netifaces` to install")
-
 import webbrowser
 import os
 import socket
