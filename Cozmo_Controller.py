@@ -273,14 +273,8 @@ def startCozmo():
 if __name__ == "__main__":
     print('=== Cozmo Controller v0.2.8 ===')
 
-    parser = argparse.ArgumentParser(description='Cozmo_Controller')
-    parser.add_argument('externalHostname', metavar='externalHostname', nargs='?', default='localhost',
-                        help='external hostname/ip-address the application can be accesed by')
-
-    args = parser.parse_args()
-
     threading.Thread(target=startCozmo).start()
 
-    commander = server.Server(handleCommand, handleCamera, args.externalHostname)
+    commander = server.Server(handleCommand, handleCamera)
     commander.start()
     shutdown = True;

@@ -8,11 +8,6 @@ try:
 except ImportError:
     sys.exit("Cannot import Tornado: Do `pip3 install --user tornado` to install")
 
-try:
-    import netifaces
-except ImportError:
-    sys.exit("Cannot import netifaces: Do `pip3 install --user netifaces` to install")
-
 import webbrowser
 import os
 import socket
@@ -26,12 +21,11 @@ cameraHandler = 0
 clientCount = 0
 
 class Server:
-    def __init__(self, handler, camera, serverHost='localhost'):
+    def __init__(self, handler, camera):
         global commandHandler
         global cameraHandler
         commandHandler = handler
         cameraHandler = camera
-        self.serverHost = serverHost
 
     def setRobotStatus(self, status):
         global robotStatus
@@ -48,15 +42,6 @@ class Server:
         global clients
         for client in clients:
             client.write_message(command)
-
-    class IpTemplateHandler(tornado.web.RequestHandler):
-        def initialize(self, filename, host):
-            self.filename = filename
-            self.host = host
-
-        def get(self):
-            loader = tornado.template.Loader(".")
-            self.write(loader.load(self.filename).generate(host=self.host))
 
     class BlocklyHandler(tornado.web.RequestHandler):
         def get(self):
@@ -135,9 +120,9 @@ class Server:
     def start(self):
         application = tornado.web.Application([
         (r'/ws', Server.WSHandler),
-        (r'/', Server.IpTemplateHandler, {'filename': 'Web App/index.html', 'host': self.serverHost}),
-        (r'/Cozmo_Extension.js', Server.IpTemplateHandler, {'filename': 'Cozmo_Extension.js', 'host': self.serverHost}),
-        (r'/connector.js', Server.IpTemplateHandler, {'filename': 'Web App/connector.js', 'host': self.serverHost}),
+        (r'/()', tornado.web.StaticFileHandler, {'path': 'Web App', 'default_filename': 'index.html'}),
+        (r'/(Cozmo_Extension.js)', tornado.web.StaticFileHandler, {'path': '.'}),
+        (r'/(connector.js)', tornado.web.StaticFileHandler, {'path': 'Web App'}),
         (r'/blockly', Server.BlocklyHandler),
         (r'/blockly/code/(.*)', tornado.web.StaticFileHandler, {'path': 'blockly'}),
         (r'/stream', Server.StreamHandler),
@@ -150,10 +135,10 @@ class Server:
         ])
         print('[Server] Starting server...')
         application.listen(9090)
-        print("[Server] Server ready at: {}:9090".format(self.serverHost))
-        print("[Server] Websockets ready at: {}:9090/ws".format(self.serverHost))
+        print("[Server] Server ready at: *:9090")
+        print("[Server] Websockets ready at: *:9090/ws")
         webbrowser.open("http://localhost:9090")
-        print("[Server] Web browser openned to: http://{}:9090".format(self.serverHost))
+        print("[Server] Web browser openned to: http://localhost:9090")
         tornado.ioloop.IOLoop.instance().start()
         print('[Server] Server stopped')
 

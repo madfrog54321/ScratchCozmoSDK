@@ -11,7 +11,7 @@ He is aware of his environment, and can interact with it. So lets get playing ..
 
 2. Install extra Python libraries
     ```
-    $ pip3 install --user tornado pillow numpy cozmo[camera] netifaces
+    $ pip3 install --user tornado pillow numpy cozmo[camera]
     ```
 3. Connect Cozmo to your phone/tablet with the Cozmo app
 
@@ -25,13 +25,12 @@ He is aware of his environment, and can interact with it. So lets get playing ..
     ```
 7. Plug your phone/tablet into your computer
 
-*Allowing Python through your firewall allows for other devices to talk to the Cozmo Controller app.*
-
 #### Want to control Cozmo over the internet?
-Provide your external hostname/ip-address to Cozmo Controller app:
+Forward TCP port 9090 (that's what Cozmo_Controller listens on) on your router from your external IP-address to your local machine's IP-address (internal) and use the following URL in a browser on remote machine:
 ```
-$ python3 Cozmo_Controller.py <your_external_hostname/ip-address>
+http://your_external_ip_address:9090
 ```
+When ScratchX interface is loaded and Cozmo blocks are showing add the `Remote Cozmo at <hostname>` block (the very last on the list) and set it to your external IP-address. Click on the block to apply the new address.
 
 ## Developers
 The [current dev version](https://github.com/madfrog54321/ScratchCozmoSDK/archive/develop.zip) can be found on the [develop branch](https://github.com/madfrog54321/ScratchCozmoSDK/tree/develop).
