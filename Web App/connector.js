@@ -38,7 +38,9 @@ function goBlack(){
 };
 
 var startSocket = function(){
-  socket = new WebSocket('ws://127.0.0.1:9090/ws'); // connect to controller
+  var loc = window.location;
+  var wsurl = 'ws://' + loc.host + '/ws';
+  socket = new WebSocket(wsurl); // connect to controller
 
   var connected = false;
 

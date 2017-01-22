@@ -6,6 +6,7 @@
   var MM_to_CM = 10;
   var connection = {
     supported: false,
+    host: 'localhost',
     socket: null,
     id: -1,
     msgCount: 0,
@@ -301,6 +302,10 @@
     status.setTransparency = (color === "White");
   };
 
+  ext.block_set_remote_host = function(host) {
+    connection.host = host;
+  };
+
   //=============================================================
   //                        Helper Methods
 
@@ -403,7 +408,7 @@
       connection.supported = true;
     }
     if(!status.shutdown && connection.supported){
-      connection.socket = new WebSocket("ws://{{ host }}:9090/ws");
+      connection.socket = new WebSocket("ws://" + connection.host + ":9090/ws");
 
       connection.socket.onopen = function(event){
         connection.connected.controller = true;
@@ -529,6 +534,7 @@
           [" ", "Set display threshold to %n", "block_setThreshold", "100"],
           [" ", "%m.invert colors", "block_invertColors", "Invert"],
           [" ", "Show transparency as %m.transparency", "block_setTransparency", "White"],
+          [" ", "Remote Cozmo at %s", "block_set_remote_host", "localhost"],
       ],
       menus: {
         colors: ["Off", "White", "Red", "Orange","Yellow", "Green", "Blue", "Purple"],
