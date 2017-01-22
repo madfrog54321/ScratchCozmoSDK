@@ -6,10 +6,9 @@ import os
 
 new_extension = "http://madfrog54321.github.io/ScratchCozmoSDK/Cozmo_Extension.js"
 
-#root = tk.Tk()
-#root.withdraw()
-#file_path = filedialog.askopenfilename()
-file_path = "project.sbx"
+root = tk.Tk()
+root.withdraw()
+file_path = filedialog.askopenfilename()
 print("Fixing project file: " + file_path)
 
 project_json = ""
