@@ -17,13 +17,13 @@ costumeNum = 0
 #clear image folder of old images
 if not os.path.exists(imagepath):
     os.makedirs(imagepath)
-'''for the_file in os.listdir(imagepath):
+    for the_file in os.listdir(imagepath):
     file_path = os.path.join(imagepath, the_file)
     try:
         if os.path.isfile(file_path):
             os.unlink(file_path)
     except Exception as e:
-        print(e)'''
+        print(e)
 
 def speak(cozmo, robot, data):
     return [], True, robot.say_text(data[0], in_parallel=True)
