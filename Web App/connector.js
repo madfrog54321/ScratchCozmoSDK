@@ -2,7 +2,7 @@ var socket;
 var robot = false;
 
 function stopMotors(){
-  socket.send('stop,-,-,-,continue');
+  socket.send('Estop,0,0,-');
 };
 
 function setColor(back, front, text, loading, button){
@@ -38,7 +38,7 @@ function goBlack(){
 };
 
 var startSocket = function(){
-  socket = new WebSocket('ws://127.0.0.1:9090/ws'); // connect to controller
+  socket = new WebSocket("ws://localhost:9090/ws"); // connect to controller
 
   var connected = false;
 

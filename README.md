@@ -11,7 +11,7 @@ He is aware of his environment, and can interact with it. So lets get playing ..
 
 2. Install extra Python libraries
     ```
-    $ pip3 install --user tornado pillow numpy cozmo[camera] netifaces
+    $ pip3 install --user tornado pillow numpy cozmo[camera]
     ```
 3. Connect Cozmo to your phone/tablet with the Cozmo app
 
@@ -25,13 +25,11 @@ He is aware of his environment, and can interact with it. So lets get playing ..
     ```
 7. Plug your phone/tablet into your computer
 
-*Allowing Python through your firewall allows for other devices to talk to the Cozmo Controller app.*
+8. Enable the SDK in the Cozmo app
 
-#### Want to control Cozmo over the internet?
-Provide your external hostname/ip-address to Cozmo Controller app:
-```
-$ python3 Cozmo_Controller.py <your_external_hostname/ip-address>
-```
+9. Cozmo should say "I am connected"
+
+10. Start programming Cozmo
 
 ## Developers
 The [current dev version](https://github.com/madfrog54321/ScratchCozmoSDK/archive/develop.zip) can be found on the [develop branch](https://github.com/madfrog54321/ScratchCozmoSDK/tree/develop).
