@@ -1,16 +1,15 @@
 #!/usr/bin/python3
-
+import asyncio
 try:
     import tornado.ioloop
     import tornado.web
     import tornado.websocket
     import tornado.template
+    import tornado.platform.asyncio as tornado_asyncio
 except ImportError:
     sys.exit("Cannot import Tornado: Do `pip3 install --user tornado` to install")
 
 import webbrowser
-import os
-import socket
 
 clients = []
 apps = []
@@ -22,6 +21,7 @@ clientCount = 0
 
 class Server:
     def __init__(self, handler, camera):
+        asyncio.set_event_loop_policy(tornado_asyncio.AnyThreadEventLoopPolicy())
         global commandHandler
         global cameraHandler
         commandHandler = handler
